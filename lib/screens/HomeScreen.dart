@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,10 +16,9 @@ class _HomePageState extends State<HomeScreen> {
         title: const Text('Doctor Appointment'), // You can add a title here
         centerTitle: true,
       ),
-      body: SingleChildScrollView( // Added SingleChildScrollView
-        child: Column(
-          children: [_loginSection()],
-        ),
+      body: SingleChildScrollView(
+        // Added SingleChildScrollView
+        child: Column(children: [_loginSection()]),
       ),
     );
   }
@@ -55,7 +55,12 @@ class _HomePageState extends State<HomeScreen> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5), // Reduced opacity
+                color: const Color.fromARGB(
+                  255,
+                  207,
+                  191,
+                  193,
+                ).withOpacity(0.5), // Reduced opacity
                 blurRadius: 20, // reduced blurRadius
                 spreadRadius: 1, // reduced spreadRadius
               ),
@@ -65,9 +70,15 @@ class _HomePageState extends State<HomeScreen> {
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // Changed to symmetric padding
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 16,
+              ), // Changed to symmetric padding
               hintText: 'Enter your email address',
-              hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+              hintStyle: const TextStyle(
+                color: Color(0xffDDDADA),
+                fontSize: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -91,20 +102,31 @@ class _HomePageState extends State<HomeScreen> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5), // Reduced opacity
+                color: const Color.fromARGB(
+                  255,
+                  207,
+                  191,
+                  193,
+                ).withOpacity(0.5), // Reduced opacity
                 blurRadius: 20,
                 spreadRadius: 1,
               ),
             ],
           ),
           child: TextField(
-             obscureText: true, // Hide the password
+            obscureText: true, // Hide the password
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // Changed to symmetric padding
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 16,
+              ),
               hintText: 'Enter your password',
-              hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+              hintStyle: const TextStyle(
+                color: Color(0xffDDDADA),
+                fontSize: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -112,10 +134,14 @@ class _HomePageState extends State<HomeScreen> {
             ),
           ),
         ),
-         Padding(
-          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 1.0), // Adjust padding
+        Padding(
+          padding: const EdgeInsets.only(
+            left: 15.0,
+            right: 15.0,
+            top: 1.0,
+          ), // Adjust padding
           child: Row(
-             mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
                 onPressed: () {
@@ -134,9 +160,11 @@ class _HomePageState extends State<HomeScreen> {
           ),
         ),
         Padding(
-           padding: const EdgeInsets.all(15.0), // Adjust Padding
+          padding: const EdgeInsets.all(15.0), // Adjust Padding
           child: SizedBox(
-            width: double.infinity, // make the button take all the available space.
+            width:
+                double
+                    .infinity, // make the button take all the available space.
             height: 50,
             child: ElevatedButton(
               onPressed: () {
@@ -159,6 +187,61 @@ class _HomePageState extends State<HomeScreen> {
             ),
           ),
         ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20.0),
+          child: Row(
+            children: [
+              Expanded(child: Divider(thickness: 1)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text("Or Login with"),
+              ),
+              Expanded(child: Divider(thickness: 1)),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 100),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SignInButton(
+                Buttons.FacebookNew,
+                onPressed: () {
+                  // TODO: Handle Facebook login
+                },
+              ),
+              SignInButton(
+                Buttons.GoogleDark,
+                onPressed: () {
+                  // TODO: Handle Google login
+                },
+              ),
+              SignInButton(
+                Buttons.AppleDark,
+                onPressed: () {
+                  // TODO: Handle Apple login
+                },
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Don't have an account?"),
+              TextButton(
+                onPressed: () {
+                  // TODO: Handle sign up
+                },
+                child: const Text("Sign up"),
+              ),
+            ],
+          ),
+        ),
+        
       ],
     );
   }
