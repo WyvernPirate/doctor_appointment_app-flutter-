@@ -1,4 +1,6 @@
+// HomeScreen.dart
 import 'package:flutter/material.dart';
+import 'SignUp.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,11 +15,10 @@ class _HomePageState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Doctor Appointment'), // You can add a title here
+        title: const Text('Doctor Appointment'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        // Added SingleChildScrollView
         child: Column(children: [_loginSection()]),
       ),
     );
@@ -55,14 +56,9 @@ class _HomePageState extends State<HomeScreen> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5), // Reduced opacity
-                blurRadius: 20, // reduced blurRadius
-                spreadRadius: 1, // reduced spreadRadius
+                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 1,
               ),
             ],
           ),
@@ -73,7 +69,7 @@ class _HomePageState extends State<HomeScreen> {
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 16,
-              ), // Changed to symmetric padding
+              ),
               hintText: 'Enter your email address',
               hintStyle: const TextStyle(
                 color: Color(0xffDDDADA),
@@ -102,19 +98,14 @@ class _HomePageState extends State<HomeScreen> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5), // Reduced opacity
+                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5),
                 blurRadius: 20,
                 spreadRadius: 1,
               ),
             ],
           ),
           child: TextField(
-            obscureText: true, // Hide the password
+            obscureText: true,
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
@@ -139,13 +130,14 @@ class _HomePageState extends State<HomeScreen> {
             left: 15.0,
             right: 15.0,
             top: 1.0,
-          ), // Adjust padding
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
                 onPressed: () {
-                  // tODO:Handle forgot password
+                  // TODO:Handle forgot password
+                  print("Forgot password pressed");
                 },
                 child: const Text(
                   'Forgot Password?',
@@ -160,15 +152,14 @@ class _HomePageState extends State<HomeScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(15.0), // Adjust Padding
+          padding: const EdgeInsets.all(15.0),
           child: SizedBox(
-            width:
-                double
-                    .infinity, // make the button take all the available space.
+            width: double.infinity,
             height: 50,
             child: ElevatedButton(
               onPressed: () {
                 //TODO: handle on button click
+                print("Login button pressed");
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
@@ -209,18 +200,21 @@ class _HomePageState extends State<HomeScreen> {
                 Buttons.FacebookNew,
                 onPressed: () {
                   // TODO: Handle Facebook login
+                  print("Facebook login pressed");
                 },
               ),
               SignInButton(
                 Buttons.GoogleDark,
                 onPressed: () {
                   // TODO: Handle Google login
+                  print("Google login pressed");
                 },
               ),
               SignInButton(
                 Buttons.AppleDark,
                 onPressed: () {
                   // TODO: Handle Apple login
+                  print("Apple login pressed");
                 },
               ),
             ],
@@ -234,14 +228,17 @@ class _HomePageState extends State<HomeScreen> {
               const Text("Don't have an account?"),
               TextButton(
                 onPressed: () {
-                  // TODO: Handle sign up
+                  // Navigate to the SignUp screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SignUp()),
+                  );
                 },
                 child: const Text("Sign up"),
               ),
             ],
           ),
         ),
-        
       ],
     );
   }
