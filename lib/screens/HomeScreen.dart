@@ -11,8 +11,15 @@ class _HomePageState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
-      body: Column(children: [_loginSection(), Column()]),
+      appBar: AppBar(
+        title: const Text('Doctor Appointment'), // You can add a title here
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView( // Added SingleChildScrollView
+        child: Column(
+          children: [_loginSection()],
+        ),
+      ),
     );
   }
 
@@ -20,8 +27,8 @@ class _HomePageState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 50),
-        Padding(
+        const SizedBox(height: 50),
+        const Padding(
           padding: EdgeInsets.all(15.0),
           child: Text(
             'Log in',
@@ -32,7 +39,7 @@ class _HomePageState extends State<HomeScreen> {
             ),
           ),
         ),
-        Padding(
+        const Padding(
           padding: EdgeInsets.only(top: 5, left: 15),
           child: Text(
             'Email Address',
@@ -44,13 +51,13 @@ class _HomePageState extends State<HomeScreen> {
           ),
         ),
         Container(
-          margin: EdgeInsets.all(6),
+          margin: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Color.fromARGB(255, 207, 191, 193),
-                blurRadius: 40,
-                spreadRadius: 0.0,
+                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5), // Reduced opacity
+                blurRadius: 20, // reduced blurRadius
+                spreadRadius: 1, // reduced spreadRadius
               ),
             ],
           ),
@@ -58,9 +65,9 @@ class _HomePageState extends State<HomeScreen> {
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              contentPadding: EdgeInsets.only(left: 8, right: 8),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // Changed to symmetric padding
               hintText: 'Enter your email address',
-              hintStyle: TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+              hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -68,7 +75,7 @@ class _HomePageState extends State<HomeScreen> {
             ),
           ),
         ),
-        Padding(
+        const Padding(
           padding: EdgeInsets.only(top: 20, left: 15),
           child: Text(
             'Password',
@@ -80,24 +87,24 @@ class _HomePageState extends State<HomeScreen> {
           ),
         ),
         Container(
-          margin: EdgeInsets.all(6),
+          margin: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Color.fromARGB(255, 207, 191, 193),
-                blurRadius: 40,
-                spreadRadius: 0.0,
+                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5), // Reduced opacity
+                blurRadius: 20,
+                spreadRadius: 1,
               ),
             ],
           ),
           child: TextField(
+             obscureText: true, // Hide the password
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              contentPadding: EdgeInsets.only(left: 8, right: 8),
-
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // Changed to symmetric padding
               hintText: 'Enter your password',
-              hintStyle: TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+              hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -105,35 +112,43 @@ class _HomePageState extends State<HomeScreen> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(left: 310),
-          child: Text(
-            'Forgot Password?',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
-            ),
+         Padding(
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 1.0), // Adjust padding
+          child: Row(
+             mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () {
+                  // tODO:Handle forgot password
+                },
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-
-        TextButton(
-          onPressed: () {},
-          child: Padding(
-            padding: EdgeInsets.all(0.0),
-            child: Container(
-              
-              width: 310,
-              height: 50,
-              
-              decoration: BoxDecoration(
-                shape: BoxShape.rectangle,
-               
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(10),
-                
+        Padding(
+           padding: const EdgeInsets.all(15.0), // Adjust Padding
+          child: SizedBox(
+            width: double.infinity, // make the button take all the available space.
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                //TODO: handle on button click
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Text(
+              child: const Text(
                 'Log In',
                 style: TextStyle(
                   fontSize: 15,
@@ -143,7 +158,6 @@ class _HomePageState extends State<HomeScreen> {
               ),
             ),
           ),
-          
         ),
       ],
     );
