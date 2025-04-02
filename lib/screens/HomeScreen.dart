@@ -1,4 +1,5 @@
 // HomeScreen.dart
+import 'PasswordReset.dart';
 import 'package:flutter/material.dart';
 import 'SignUp.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
@@ -137,6 +138,9 @@ class _HomePageState extends State<HomeScreen> {
               TextButton(
                 onPressed: () {
                   // TODO:Handle forgot password
+                  Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const PasswordReset())
+                  );
                   print("Forgot password pressed");
                 },
                 child: const Text(
