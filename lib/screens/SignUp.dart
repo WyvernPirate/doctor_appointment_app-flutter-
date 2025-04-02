@@ -46,40 +46,14 @@ class _SignUpState extends State<SignUp> {
             ),
           ),
         ),
-        Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
+         Padding(
+          padding: const EdgeInsets.all(6.0),
           child: TextField(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
-              ),
-              hintText: 'Enter your full name',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+            decoration: const InputDecoration(
+              labelText: 'Enter your full name',
+              border: OutlineInputBorder(),
             ),
+            keyboardType: TextInputType.emailAddress,
           ),
         ),
         const Padding(
@@ -93,40 +67,14 @@ class _SignUpState extends State<SignUp> {
             ),
           ),
         ),
-        Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
+         Padding(
+          padding: const EdgeInsets.all(6.0),
           child: TextField(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
-              ),
-              hintText: 'Enter your email address',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+            decoration: const InputDecoration(
+              labelText: 'Enter your email',
+              border: OutlineInputBorder(),
             ),
+            keyboardType: TextInputType.emailAddress,
           ),
         ),
         const Padding(
@@ -140,41 +88,14 @@ class _SignUpState extends State<SignUp> {
             ),
           ),
         ),
-        Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
+         Padding(
+          padding: const EdgeInsets.all(6.0),
           child: TextField(
-            obscureText: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
-              ),
-              hintText: 'Enter your password',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+            decoration: const InputDecoration(
+              labelText: 'Enter your new password',
+              border: OutlineInputBorder(),
             ),
+            keyboardType: TextInputType.emailAddress,
           ),
         ),
         const Padding(
@@ -188,41 +109,14 @@ class _SignUpState extends State<SignUp> {
             ),
           ),
         ),
-        Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
+         Padding(
+          padding: const EdgeInsets.all(6.0),
           child: TextField(
-            obscureText: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
-              ),
-              hintText: 'Confirm your password',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+            decoration: const InputDecoration(
+              labelText: 'Confirm your password',
+              border: OutlineInputBorder(),
             ),
+            keyboardType: TextInputType.emailAddress,
           ),
         ),
 
