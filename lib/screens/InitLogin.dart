@@ -42,7 +42,7 @@ class _InitLoginState extends State<InitLogin> {
 
   // Add this function to handle skipping login
   Future<void> _handleSkipLogin() async {
-    //TODO: implemntation of function
+    //TODO: implementation of function
     //SharedPreferences prefs = await SharedPreferences.getInstance();
     //await prefs.setBool('isLoggedIn', false); // Not logged in
     //await prefs.setBool('isGuest', true); // Set isGuest to true
@@ -92,40 +92,14 @@ class _InitLoginState extends State<InitLogin> {
             ),
           ),
         ),
-        Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
+        Padding(
+          padding: const EdgeInsets.all(6.0),
           child: TextField(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
-              ),
-              hintText: 'Enter your email address',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+            decoration: const InputDecoration(
+              labelText: 'Enter your Email',
+              border: OutlineInputBorder(),
             ),
+            keyboardType: TextInputType.emailAddress,
           ),
         ),
         const Padding(
@@ -139,41 +113,14 @@ class _InitLoginState extends State<InitLogin> {
             ),
           ),
         ),
-        Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(
-                  255,
-                  207,
-                  191,
-                  193,
-                ).withOpacity(0.5),
-                blurRadius: 20,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
+        Padding(
+          padding: const EdgeInsets.all(6.0),
           child: TextField(
-            obscureText: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 16,
-              ),
-              hintText: 'Enter your password',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
+            decoration: const InputDecoration(
+              labelText: 'Enter your Password',
+              border: OutlineInputBorder(),
             ),
+            keyboardType: TextInputType.emailAddress,
           ),
         ),
         Padding(
@@ -183,7 +130,6 @@ class _InitLoginState extends State<InitLogin> {
             children: [
               TextButton(
                 onPressed: () {
-                  // TODO:Handle forgot password
                   Navigator.push(
                     context,
                     MaterialPageRoute(
