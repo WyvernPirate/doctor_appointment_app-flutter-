@@ -47,7 +47,7 @@ class _SignUpState extends State<SignUp> {
           ),
         ),
          Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
             decoration: const InputDecoration(
               labelText: 'Enter your full name',
@@ -68,7 +68,7 @@ class _SignUpState extends State<SignUp> {
           ),
         ),
          Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
             decoration: const InputDecoration(
               labelText: 'Enter your email',
@@ -89,7 +89,7 @@ class _SignUpState extends State<SignUp> {
           ),
         ),
          Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
             decoration: const InputDecoration(
               labelText: 'Enter your new password',
@@ -110,7 +110,7 @@ class _SignUpState extends State<SignUp> {
           ),
         ),
          Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
             decoration: const InputDecoration(
               labelText: 'Confirm your password',
@@ -158,12 +158,12 @@ class _SignUpState extends State<SignUp> {
           padding: EdgeInsets.symmetric(vertical: 20.0),
           child: Row(
             children: [
-              Expanded(child: Divider(thickness: 1)),
+              Expanded(child: Divider(thickness: 1,indent: 20,)),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text("Or Register with"),
               ),
-              Expanded(child: Divider(thickness: 1)),
+              Expanded(child: Divider(thickness: 1,endIndent: 20,)),
             ],
           ),
         ),
