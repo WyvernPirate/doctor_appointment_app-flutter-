@@ -80,15 +80,63 @@ class _HomeState extends State<Home> {
         ],
       ),
       body: Column(children: [
-        _searchSection(),
         _isGuest
             ? const Text("You are in guest mode")
-            : const Text("You are logged in")
+            : const Text("You are logged in"),
+         _searchSection(),
       ]),
     );
   }
 
-  Column _searchSection() {
-    return Column();
+ Container _searchSection() {
+    return Container(
+      margin: EdgeInsets.only(top: 10, left: 20, right: 20),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromARGB(255, 207, 191, 193),
+            blurRadius: 20,
+            spreadRadius: 0.0,
+          ),
+        ],
+      ),
+      child: TextField(
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.all(15),
+          hintText: 'Search for Doctor, Place, Specialists...',
+          hintStyle: TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Icon(Icons.search),
+          ),
+          suffixIcon: SizedBox(
+            width: 100,
+            child: IntrinsicHeight(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  VerticalDivider(
+                    color: Colors.black,
+                    indent: 10,
+                    endIndent: 10,
+                    thickness: 0.7,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(Icons.filter_list),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
   }
 }
