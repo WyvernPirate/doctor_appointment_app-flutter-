@@ -1,17 +1,17 @@
-// InitLoginScreen.dart
+// InitLogin.dart
 import 'PasswordReset.dart';
 import 'package:flutter/material.dart';
 import 'SignUp.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 
-class InitLoginScreen extends StatefulWidget {
-  const InitLoginScreen({super.key});
+class InitLogin extends StatefulWidget {
+  const InitLogin({super.key});
 
   @override
-  State<InitLoginScreen> createState() => _HomePageState();
+  State<InitLogin> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<InitLoginScreen> {
+class _HomePageState extends State<InitLogin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

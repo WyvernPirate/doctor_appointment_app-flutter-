@@ -1,4 +1,4 @@
-import 'package:doctor_appointment_app/screens/InitLoginScreen.dart';
+import 'package:doctor_appointment_app/screens/InitLogin.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -16,6 +16,6 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: InitLoginScreen());
+      home: InitLogin());
   }
 }
