@@ -238,9 +238,7 @@ class _SignUpState extends State<SignUp> {
 
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const Home(),
-                  ), //login for now
+                  MaterialPageRoute(builder: (context) => const Home()),
                 );
 
                 print("Sign up button pressed");
