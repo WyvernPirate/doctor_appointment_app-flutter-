@@ -22,9 +22,9 @@ class _InitLoginState extends State<InitLogin> {
 
     if (loginSuccessful) {
       // Save login state to shared preferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true); // login for now
-      await prefs.setBool('isGuest', false); // Set isGuest to false on login
+      //SharedPreferences prefs = await SharedPreferences.getInstance();
+      //await prefs.setBool('isLoggedIn', true); // login for now
+      //await prefs.setBool('isGuest', false); // Set isGuest to false on login
 
       // Navigate to the Home screen
       Navigator.pushReplacement(
@@ -42,9 +42,10 @@ class _InitLoginState extends State<InitLogin> {
 
   // Add this function to handle skipping login
   Future<void> _handleSkipLogin() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false); // Not logged in
-    await prefs.setBool('isGuest', true); // Set isGuest to true
+    //TODO: implemntation of function
+    //SharedPreferences prefs = await SharedPreferences.getInstance();
+    //await prefs.setBool('isLoggedIn', false); // Not logged in
+    //await prefs.setBool('isGuest', true); // Set isGuest to true
 
     // Navigate to the Home screen
     Navigator.pushReplacement(
