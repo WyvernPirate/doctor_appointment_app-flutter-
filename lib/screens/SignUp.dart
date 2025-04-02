@@ -15,9 +15,18 @@ class _SignUpState extends State<SignUp> {
         title: const Text('Sign Up'),
         centerTitle: true,
       ),
-      body: const Center(
-        child: Text('Sign Up Screen'),
-      ),
+      body: SingleChildScrollView(
+      child: Column(children: [
+        _signUpSection()
+      ]),
+
+      )
+    );
+  }
+
+  Column _signUpSection() {
+    return Column(
+
     );
   }
 }
