@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'Home.dart';
 import 'PasswordReset.dart';
 import 'SignUp.dart';
@@ -15,31 +14,43 @@ class InitLogin extends StatefulWidget {
 }
 
 class _InitLoginState extends State<InitLogin> {
- 
   // Function to handle login
   Future<void> _handleLogin() async {
-    // TODO: Replace this with actual login logic 
+    // TODO: Replace this with actual login logic
 
     bool loginSuccessful = true; //  Assume true
 
- 
     if (loginSuccessful) {
       // Save login state to shared preferences
-    // SharedPreferences prefs = await SharedPreferences.getInstance();
-     // await prefs.setBool('isLoggedIn', true); // login for now
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true); // login for now
+      await prefs.setBool('isGuest', false); // Set isGuest to false on login
 
       // Navigate to the Home screen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const Home()),//login for now
+        MaterialPageRoute(builder: (context) => const Home()), //login for now
       );
-  // ignore: dead_code
+      // ignore: dead_code
     } else {
       // Show an error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid credentials')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid credentials')));
     }
+  }
+
+  // Add this function to handle skipping login
+  Future<void> _handleSkipLogin() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', false); // Not logged in
+    await prefs.setBool('isGuest', true); // Set isGuest to true
+
+    // Navigate to the Home screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const Home()),
+    );
   }
 
   @override
@@ -49,9 +60,7 @@ class _InitLoginState extends State<InitLogin> {
         title: const Text('Doctor Appointment'),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(children: [_loginSection()]),
-      ),
+      body: SingleChildScrollView(child: Column(children: [_loginSection()])),
     );
   }
 
@@ -87,7 +96,12 @@ class _InitLoginState extends State<InitLogin> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5),
+                color: const Color.fromARGB(
+                  255,
+                  207,
+                  191,
+                  193,
+                ).withOpacity(0.5),
                 blurRadius: 20,
                 spreadRadius: 1,
               ),
@@ -129,7 +143,12 @@ class _InitLoginState extends State<InitLogin> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: const Color.fromARGB(255, 207, 191, 193).withOpacity(0.5),
+                color: const Color.fromARGB(
+                  255,
+                  207,
+                  191,
+                  193,
+                ).withOpacity(0.5),
                 blurRadius: 20,
                 spreadRadius: 1,
               ),
@@ -157,19 +176,18 @@ class _InitLoginState extends State<InitLogin> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(
-            left: 15.0,
-            right: 15.0,
-            top: 1.0,
-          ),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 1.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
                 onPressed: () {
                   // TODO:Handle forgot password
-                  Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const PasswordReset())
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PasswordReset(),
+                    ),
                   );
                   print("Forgot password pressed");
                 },
@@ -266,6 +284,10 @@ class _InitLoginState extends State<InitLogin> {
                   );
                 },
                 child: const Text("Sign up"),
+              ),
+              TextButton(
+                onPressed: _handleSkipLogin, // Call the skip function
+                child: const Text("Skip"),
               ),
             ],
           ),
