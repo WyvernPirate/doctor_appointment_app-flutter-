@@ -27,15 +27,43 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> _handleLogout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
-    await prefs.setBool('isGuest', false); // Reset isGuest on logout
+    // Show confirmation dialog
+    bool confirmLogout = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop(false); // Return false (don't logout)
+              },
+            ),
+            TextButton(
+              child: const Text('Logout'),
+              onPressed: () {
+                Navigator.of(context).pop(true); // Return true (logout)
+              },
+            ),
+          ],
+        );
+      },
+    ) ?? false; // If dialog is dismissed, default to false
 
-    // Navigate back to the login screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const InitLogin()),
-    );
+    // If user confirmed logout, proceed
+    if (confirmLogout) {
+      //SharedPreferences prefs = await SharedPreferences.getInstance();
+      //await prefs.setBool('isLoggedIn', false);
+      //await prefs.setBool('isGuest', false); // Reset isGuest on logout
+
+      // Navigate back to the login screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const InitLogin()),
+      );
+    }
   }
 
   @override
