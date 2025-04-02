@@ -73,7 +73,7 @@ class _InitLoginState extends State<InitLogin> {
         const Padding(
           padding: EdgeInsets.all(15.0),
           child: Text(
-            'Log in',
+            'Log In',
             style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.bold,
@@ -93,7 +93,7 @@ class _InitLoginState extends State<InitLogin> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
             decoration: const InputDecoration(
               labelText: 'Enter your Email',
@@ -114,7 +114,7 @@ class _InitLoginState extends State<InitLogin> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
             decoration: const InputDecoration(
               labelText: 'Enter your Password',
