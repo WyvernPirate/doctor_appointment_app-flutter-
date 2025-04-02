@@ -1,17 +1,47 @@
 // InitLogin.dart
-import 'PasswordReset.dart';
 import 'package:flutter/material.dart';
-import 'SignUp.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'Home.dart';
+import 'PasswordReset.dart';
+import 'SignUp.dart';
 
 class InitLogin extends StatefulWidget {
   const InitLogin({super.key});
 
   @override
-  State<InitLogin> createState() => _HomePageState();
+  State<InitLogin> createState() => _InitLoginState();
 }
 
-class _HomePageState extends State<InitLogin> {
+class _InitLoginState extends State<InitLogin> {
+ 
+  // Function to handle login
+  Future<void> _handleLogin() async {
+    // TODO: Replace this with actual login logic 
+
+    bool loginSuccessful = true; //  Assume true
+
+ 
+    if (loginSuccessful) {
+      // Save login state to shared preferences
+    // SharedPreferences prefs = await SharedPreferences.getInstance();
+     // await prefs.setBool('isLoggedIn', true); // login for now
+
+      // Navigate to the Home screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const Home()),//login for now
+      );
+  // ignore: dead_code
+    } else {
+      // Show an error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid credentials')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,10 +191,7 @@ class _HomePageState extends State<InitLogin> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                //TODO: handle on button click
-                print("Login button pressed");
-              },
+              onPressed: _handleLogin, // Call the login function here
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
