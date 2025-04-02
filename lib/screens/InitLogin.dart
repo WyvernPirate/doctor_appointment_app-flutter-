@@ -178,12 +178,12 @@ class _InitLoginState extends State<InitLogin> {
           padding: EdgeInsets.symmetric(vertical: 20.0),
           child: Row(
             children: [
-              Expanded(child: Divider(thickness: 1)),
+              Expanded(child: Divider(thickness: 1,indent: 20,)),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text("Or Login with"),
               ),
-              Expanded(child: Divider(thickness: 1)),
+              Expanded(child: Divider(thickness: 1, endIndent: 20,)),
             ],
           ),
         ),
