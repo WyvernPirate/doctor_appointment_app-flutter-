@@ -1,6 +1,7 @@
 // Home.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'InitLogin.dart'; // Import your login screen
 
 class Home extends StatefulWidget {
@@ -12,6 +13,31 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   bool _isGuest = false;
+  int _selectedIndex = 0; // Track selected tab in bottom navigation
+
+  // Sample doctor data (replace with your actual data)
+  final List<Map<String, String>> _doctors = [
+    {
+      'name': 'Dr. John Doe',
+      'speciality': 'Cardiologist',
+      'image': 'assets/doctor1.jpg', // Replace with actual image paths
+    },
+    {
+      'name': 'Dr. Jane Smith',
+      'speciality': 'Dermatologist',
+      'image': 'assets/doctor2.jpg',
+    },
+    {
+      'name': 'Dr. David Lee',
+      'speciality': 'Pediatrician',
+      'image': 'assets/doctor3.jpg',
+    },
+    // Add more doctors here...
+  ];
+
+  // Google Maps variables
+  late GoogleMapController mapController;
+  final LatLng _center = const LatLng(45.521563, -122.677433); // Default location
 
   @override
   void initState() {
@@ -54,9 +80,9 @@ class _HomeState extends State<Home> {
 
     // If user confirmed logout, proceed
     if (confirmLogout) {
-      //SharedPreferences prefs = await SharedPreferences.getInstance();
-      //await prefs.setBool('isLoggedIn', false);
-      //await prefs.setBool('isGuest', false); // Reset isGuest on logout
+    //  SharedPreferences prefs = await SharedPreferences.getInstance();
+     // await prefs.setBool('isLoggedIn', false);
+     // await prefs.setBool('isGuest', false); // Reset isGuest on logout
 
       // Navigate back to the login screen
       Navigator.pushReplacement(
@@ -64,6 +90,16 @@ class _HomeState extends State<Home> {
         MaterialPageRoute(builder: (context) => const InitLogin()),
       );
     }
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
@@ -79,16 +115,66 @@ class _HomeState extends State<Home> {
           ),
         ],
       ),
-      body: Column(children: [
-        _isGuest
+      body: Column(
+        children: [
+          _isGuest
             ? const Text("You are in guest mode")
             : const Text("You are logged in"),
          _searchSection(),
-      ]),
+
+          // Google Maps Section
+          Expanded(
+            flex: 1,
+            child: GoogleMap(
+              onMapCreated: _onMapCreated,
+              initialCameraPosition: CameraPosition(
+                target: _center,
+                zoom: 11.0,
+              ),
+            ),
+          ),
+          // Doctor List Section
+          Expanded(
+            flex: 1,
+            child: ListView.builder(
+              itemCount: _doctors.length,
+              itemBuilder: (context, index) {
+                final doctor = _doctors[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                   // backgroundImage: AssetImage(doctor['image']!),
+                  ),
+                  title: Text(doctor['name']!),
+                  subtitle: Text(doctor['speciality']!),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Appointments',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.blue,
+        onTap: _onItemTapped,
+      ),
     );
   }
 
- Container _searchSection() {
+  Container _searchSection() {
     return Container(
       margin: EdgeInsets.only(top: 10, left: 20, right: 20),
       decoration: BoxDecoration(
