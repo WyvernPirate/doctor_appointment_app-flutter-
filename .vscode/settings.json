@@ -1,3 +1,9 @@
 {
-    "cmake.sourceDirectory": "C:/VS/flutterdev/doctor_appointment_app/linux"
+    "cmake.sourceDirectory": "C:/VS/flutterdev/doctor_appointment_app/linux",
+    "cSpell.words": [
+        "Cupertino",
+        "prefs",
+        "Schyler"
+    ],
+    "java.configuration.updateBuildConfiguration": "automatic"
 }
