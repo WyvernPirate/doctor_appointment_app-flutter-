@@ -1,8 +1,8 @@
 // InitLogin.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
-// ignore: unused_import
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'Home.dart';
 import 'PasswordReset.dart';
 import 'SignUp.dart';
@@ -15,40 +15,85 @@ class InitLogin extends StatefulWidget {
 }
 
 class _InitLoginState extends State<InitLogin> {
-  // Function to handle login
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false; // Add a loading indicator
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // Function to handle login with Firebase
   Future<void> _handleLogin() async {
-    // TODO: Replace this with actual login logic
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final String email = _emailController.text.trim();
+      final String password = _passwordController.text.trim();
 
-    bool loginSuccessful = true; //  Assume true
+      if (email.isEmpty || password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please fill in all fields')),
+        );
+        return;
+      }
 
-    if (loginSuccessful) {
-      // Save login state to shared preferences
-      //SharedPreferences prefs = await SharedPreferences.getInstance();
-      //await prefs.setBool('isLoggedIn', true); // login for now
-      //await prefs.setBool('isGuest', false); // Set isGuest to false on login
+      // Sign in with email and password
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // If successful, save login state and navigate
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setBool('isGuest', false);
 
       // Navigate to the Home screen
+      // ignore: use_build_context_synchronously
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const Home()), //login for now
+        MaterialPageRoute(builder: (context) => const Home()),
       );
-      // ignore: dead_code
-    } else {
-      // Show an error message
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Invalid credentials')));
+    } on FirebaseAuthException catch (e) {
+      // Handle Firebase authentication errors
+      String errorMessage = 'An error occurred.';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Wrong password provided for that user.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is badly formatted.';
+      } else if (e.code == 'user-disabled') {
+        errorMessage = 'This user account has been disabled.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      // Handle other errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An unexpected error occurred.')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   // Add this function to handle skipping login
   Future<void> _handleSkipLogin() async {
-    //TODO: implementation of function
-    //SharedPreferences prefs = await SharedPreferences.getInstance();
-    //await prefs.setBool('isLoggedIn', false); // Not logged in
-    //await prefs.setBool('isGuest', true); // Set isGuest to true
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', false); // Not logged in
+    await prefs.setBool('isGuest', true); // Set isGuest to true
 
     // Navigate to the Home screen
+    // ignore: use_build_context_synchronously
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const Home()),
@@ -62,7 +107,9 @@ class _InitLoginState extends State<InitLogin> {
         title: const Text('Doctor Appointment'),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(child: Column(children: [_loginSection()])),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator()) // Show loading indicator
+          : SingleChildScrollView(child: Column(children: [_loginSection()])),
     );
   }
 
@@ -96,6 +143,7 @@ class _InitLoginState extends State<InitLogin> {
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
+            controller: _emailController,
             decoration: const InputDecoration(
               labelText: 'Enter your Email',
               border: OutlineInputBorder(),
@@ -117,11 +165,12 @@ class _InitLoginState extends State<InitLogin> {
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
+            controller: _passwordController,
             decoration: const InputDecoration(
               labelText: 'Enter your Password',
               border: OutlineInputBorder(),
             ),
-            keyboardType: TextInputType.emailAddress,
+            obscureText: true, // Hide password
           ),
         ),
         Padding(
