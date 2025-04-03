@@ -109,17 +109,17 @@ class _HomeState extends State<Home> {
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
-        return _homeScreenBody(); // Your current home screen content
+        return _homeScreenBody(); 
       case 1:
-        return const Appointments(); // Replace with your Appointments screen widget
+        return const Appointments(); 
       case 2:
-        return const Profile(); // Replace with your Profile screen widget
+        return const Profile(); 
       default:
-        return _homeScreenBody(); // Default to home screen
+        return _homeScreenBody(); 
     }
   }
 
-  // Your original home screen content
+  
   Widget _homeScreenBody() {
     return Column(
       children: [
@@ -170,7 +170,7 @@ class _HomeState extends State<Home> {
           ),
         ],
       ),
-      body: _buildBody(), // Use the function to build the body
+      body: _buildBody(), // function to build the body
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
