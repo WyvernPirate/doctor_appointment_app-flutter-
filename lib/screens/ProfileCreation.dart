@@ -1,15 +1,16 @@
 // ProfileCreation.dart
 import 'dart:io';
+import 'package:doctor_appointment_app/models/DatabaseHelper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:path/path.dart' as path;
-import 'package:firebase_auth/firebase_auth.dart';
-import 'Home.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // For storing images
+import 'package:cloud_firestore/cloud_firestore.dart'; // For storing user data
+import 'package:path/path.dart' as path; // Import the path package
+import 'Home.dart'; // Import your Home screen
 
 class ProfileCreation extends StatefulWidget {
-  const ProfileCreation({super.key});
+  const ProfileCreation({Key? key}) : super(key: key);
 
   @override
   _ProfileCreationState createState() => _ProfileCreationState();
@@ -22,10 +23,11 @@ class _ProfileCreationState extends State<ProfileCreation> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _dobController = TextEditingController();
-  String _gender = 'Male';
+  String _gender = 'Male'; // Default gender
   File? _profileImage;
   bool _isLoading = false;
 
+  // Image Picker
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
@@ -37,48 +39,61 @@ class _ProfileCreationState extends State<ProfileCreation> {
       });
     }
   }
+  
+  
+  final DatabaseHelper _dbHelper = DatabaseHelper(); // Create an instance
 
+ // Save Profile Data to Firebase
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
-      try {
-        String? imageUrl;
+    try {
+      String? imageUrl;
         if (_profileImage != null) {
+          // Upload image to Firebase Storage
           String fileName = path.basename(_profileImage!.path);
-          Reference storageReference = FirebaseStorage.instance
-              .ref()
-              .child('profile_images/${FirebaseAuth.instance.currentUser!.uid}/$fileName');
+          Reference storageReference =
+              FirebaseStorage.instance.ref().child('profile_images/$fileName');
           UploadTask uploadTask = storageReference.putFile(_profileImage!);
           await uploadTask.whenComplete(() async {
             imageUrl = await storageReference.getDownloadURL();
           });
         }
 
-        // Store user data in Firestore with the user's UID as the document ID
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(FirebaseAuth.instance.currentUser!.uid)
-            .set({
-          'userId': FirebaseAuth.instance.currentUser!.uid,
-          'name': _nameController.text,
-          'email': _emailController.text,
-          'phone': _phoneController.text,
-          'address': _addressController.text,
-          'dob': _dobController.text,
-          'gender': _gender,
-          'profileImageUrl': imageUrl,
-        });
+      // Store user data in Firestore
+      await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).set({
+        'userId': FirebaseAuth.instance.currentUser!.uid,
+        'name': _nameController.text,
+        'email': _emailController.text,
+        'phone': _phoneController.text,
+        'address': _addressController.text,
+        'dob': _dobController.text,
+        'gender': _gender,
+        'profileImageUrl': imageUrl,
+      });
 
-        // Navigate to Home screen after successful profile creation
-        // ignore: use_build_context_synchronously
+      // Save profile data to local database
+      await _dbHelper.insertUserProfile({
+        'userId': FirebaseAuth.instance.currentUser!.uid,
+        'name': _nameController.text,
+        'email': _emailController.text,
+        'phone': _phoneController.text,
+        'address': _addressController.text,
+        'dob': _dobController.text,
+        'gender': _gender,
+        'profileImageUrl': imageUrl,
+      });
+
+    // Navigate to Home screen after successful profile creation
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const Home()),
         );
       } catch (e) {
+        // Handle errors
         print('Error saving profile: $e');
         _showSnackBar('Error saving profile. Please try again.');
       } finally {
@@ -114,6 +129,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Profile Image
                     GestureDetector(
                       onTap: _pickImage,
                       child: CircleAvatar(
