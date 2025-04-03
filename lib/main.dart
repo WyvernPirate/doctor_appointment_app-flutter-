@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
+// main.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
-import 'screens/Home.dart';
 import 'screens/InitLogin.dart';
+import 'firebase_options.dart';
+import 'screens/Home.dart';
+import 'screens/ProfileCreation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,25 +15,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Check login status
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-  bool isGuest = prefs.getBool('isGuest') ?? false;
-
-  // Check if the user is already authenticated with Firebase
-  bool isFirebaseLoggedIn = FirebaseAuth.instance.currentUser != null;
-
-  runApp(MyApp(
-    isLoggedIn: isLoggedIn || isFirebaseLoggedIn,
-    isGuest: isGuest,
-  ));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final bool isLoggedIn;
-  final bool isGuest;
-
-  const MyApp({super.key, required this.isLoggedIn, required this.isGuest});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +29,83 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: isLoggedIn || isGuest
-          ? const Home()
-          : const InitLogin(),
+      home: const AuthCheck(),
     );
+  }
+}
+
+class AuthCheck extends StatefulWidget {
+  const AuthCheck({super.key});
+
+  @override
+  State<AuthCheck> createState() => _AuthCheckState();
+}
+
+class _AuthCheckState extends State<AuthCheck> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+  bool _isGuest = false;
+  bool _isFirstTime = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _isGuest = prefs.getBool('isGuest') ?? false;
+    _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (_isGuest) {
+      setState(() {
+        _isLoading = false;
+      });
+    } else if (FirebaseAuth.instance.currentUser != null) {
+      // User is logged in with Firebase
+      _isLoggedIn = true;
+      await _checkFirstTime();
+    } else {
+      // User is not logged in
+      _isLoggedIn = false;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _checkFirstTime() async {
+    String userId = FirebaseAuth.instance.currentUser!.uid;
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+
+    setState(() {
+      _isFirstTime = !userDoc.exists;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    } else {
+      if (_isGuest) {
+        return const Home();
+      } else if (_isLoggedIn && _isFirstTime) {
+        return const ProfileCreation();
+      } else if (_isLoggedIn && !_isFirstTime) {
+        return const Home();
+      } else {
+        return const InitLogin();
+      }
+    }
   }
 }
