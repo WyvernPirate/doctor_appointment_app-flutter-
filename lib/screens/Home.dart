@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'InitLogin.dart'; // Import your login screen
+import 'Appointments.dart'; // Import your Appointments screen
+import 'Profile.dart'; // Import your Profile screen
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -103,6 +105,58 @@ class _HomeState extends State<Home> {
     });
   }
 
+  // Function to build the body based on the selected index
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return _homeScreenBody(); // Your current home screen content
+      case 1:
+        return const Appointments(); // Replace with your Appointments screen widget
+      case 2:
+        return const Profile(); // Replace with your Profile screen widget
+      default:
+        return _homeScreenBody(); // Default to home screen
+    }
+  }
+
+  // Your original home screen content
+  Widget _homeScreenBody() {
+    return Column(
+      children: [
+        _isGuest
+            ? const Text("You are in guest mode")
+            : const Text("You are logged in"),
+        _searchSection(),
+        _mapSection(),
+        Container(
+          margin: const EdgeInsets.only(top: 10, left: 10),
+          alignment: Alignment.topLeft,
+          child: const Text(
+            'Doctors:',
+            style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+          ),
+        ),
+        // Doctor List Section
+        Expanded(
+          flex: 1,
+          child: ListView.builder(
+            itemCount: _doctors.length,
+            itemBuilder: (context, index) {
+              final doctor = _doctors[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  //backgroundImage: AssetImage(doctor['image']!),
+                ),
+                title: Text(doctor['name']!),
+                subtitle: Text(doctor['speciality']!),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,32 +170,7 @@ class _HomeState extends State<Home> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _isGuest
-              ? const Text("You are in guest mode")
-              : const Text("You are logged in"),
-          _searchSection(),
-          _mapSection(),
-          // Doctor List Section
-          Expanded(
-            flex: 1,
-            child: ListView.builder(
-              itemCount: _doctors.length,
-              itemBuilder: (context, index) {
-                final doctor = _doctors[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    //backgroundImage: AssetImage(doctor['image']!), 
-                  ),
-                  title: Text(doctor['name']!),
-                  subtitle: Text(doctor['speciality']!),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+      body: _buildBody(), // Use the function to build the body
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -166,29 +195,27 @@ class _HomeState extends State<Home> {
 
   Container _mapSection() {
     return Container(
-          margin: const EdgeInsets.only(top: 10, left: 10, right: 10),
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.black),
-            borderRadius: BorderRadius.circular(10)
+      margin: const EdgeInsets.only(top: 10, left: 10, right: 10),
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+          border: Border.all(color: Colors.black),
+          borderRadius: BorderRadius.circular(10)),
+      child: SizedBox(
+        width: double.infinity,
+        height: 280,
+        child: GoogleMap(
+          onMapCreated: _onMapCreated,
+          initialCameraPosition: CameraPosition(
+            target: _gaboroneCenter,
+            zoom: 12.0, // Adjust the zoom level for Gaborone
           ),
-          child: SizedBox( 
-            width: double.infinity,
-            height: 300,
-            
-            child: GoogleMap(
-              onMapCreated: _onMapCreated,
-              initialCameraPosition: CameraPosition(
-                target: _gaboroneCenter,
-                zoom: 12.0, // Adjust the zoom level for Gaborone
-              ),
-              // Optional: Disable map interaction
-                 //mapToolbarEnabled: false,
-                 //scrollGesturesEnabled: false,
-                 zoomControlsEnabled: false,
-              ),
-          ),
-        );
+          // Optional: Disable map interaction
+          //mapToolbarEnabled: false,
+          //scrollGesturesEnabled: false,
+          zoomControlsEnabled: false,
+        ),
+      ),
+    );
   }
 
   Container _searchSection() {
@@ -226,8 +253,8 @@ class _HomeState extends State<Home> {
                     endIndent: 10,
                     thickness: 0.7,
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
+                  const Padding(
+                    padding: EdgeInsets.all(12),
                     child: Icon(Icons.filter_list),
                   ),
                 ],
