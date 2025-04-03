@@ -1,10 +1,13 @@
 // InitLogin.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+
 import 'Home.dart';
 import 'PasswordReset.dart';
+import 'ProfileCreation.dart';
 import 'SignUp.dart';
 
 class InitLogin extends StatefulWidget {
@@ -17,7 +20,7 @@ class InitLogin extends StatefulWidget {
 class _InitLoginState extends State<InitLogin> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false; // Add a loading indicator
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,7 +29,6 @@ class _InitLoginState extends State<InitLogin> {
     super.dispose();
   }
 
-  // Function to handle login with Firebase
   Future<void> _handleLogin() async {
     setState(() {
       _isLoading = true;
@@ -43,7 +45,8 @@ class _InitLoginState extends State<InitLogin> {
       }
 
       // Sign in with email and password
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -53,11 +56,16 @@ class _InitLoginState extends State<InitLogin> {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setBool('isGuest', false);
 
-      // Navigate to the Home screen
+      // Check if it's the first time login
+      bool isFirstTime = await _checkFirstTime(userCredential.user!.uid);
+
+      // Navigate to the appropriate screen
       // ignore: use_build_context_synchronously
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const Home()),
+        MaterialPageRoute(
+            builder: (context) =>
+                isFirstTime ? const ProfileCreation() : const Home()),
       );
     } on FirebaseAuthException catch (e) {
       // Handle Firebase authentication errors
@@ -86,11 +94,18 @@ class _InitLoginState extends State<InitLogin> {
     }
   }
 
-  // Add this function to handle skipping login
+  Future<bool> _checkFirstTime(String userId) async {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+    return !userDoc.exists;
+  }
+
   Future<void> _handleSkipLogin() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false); // Not logged in
-    await prefs.setBool('isGuest', true); // Set isGuest to true
+    await prefs.setBool('isLoggedIn', false);
+    await prefs.setBool('isGuest', true);
 
     // Navigate to the Home screen
     // ignore: use_build_context_synchronously
@@ -108,7 +123,7 @@ class _InitLoginState extends State<InitLogin> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator()) // Show loading indicator
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(child: Column(children: [_loginSection()])),
     );
   }
@@ -170,7 +185,7 @@ class _InitLoginState extends State<InitLogin> {
               labelText: 'Enter your Password',
               border: OutlineInputBorder(),
             ),
-            obscureText: true, // Hide password
+            obscureText: true,
           ),
         ),
         Padding(
@@ -206,7 +221,7 @@ class _InitLoginState extends State<InitLogin> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: _handleLogin, // Call the login function here
+              onPressed: _handleLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
@@ -228,12 +243,20 @@ class _InitLoginState extends State<InitLogin> {
           padding: EdgeInsets.symmetric(vertical: 20.0),
           child: Row(
             children: [
-              Expanded(child: Divider(thickness: 1,indent: 20,)),
+              Expanded(
+                  child: Divider(
+                thickness: 1,
+                indent: 20,
+              )),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text("Or Login with"),
               ),
-              Expanded(child: Divider(thickness: 1, endIndent: 20,)),
+              Expanded(
+                  child: Divider(
+                thickness: 1,
+                endIndent: 20,
+              )),
             ],
           ),
         ),
@@ -283,7 +306,7 @@ class _InitLoginState extends State<InitLogin> {
                 child: const Text("Sign up"),
               ),
               TextButton(
-                onPressed: _handleSkipLogin, // Call the skip function
+                onPressed: _handleSkipLogin,
                 child: const Text("Skip"),
               ),
             ],
