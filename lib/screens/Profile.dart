@@ -1,7 +1,8 @@
 // Profile.dart
+import '/models/DatabaseHelper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Profile extends StatefulWidget {
   const Profile({super.key});
 
@@ -10,7 +11,7 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  Map<String, dynamic> _profileData = {};
+ Map<String, dynamic> _profileData = {};
   bool _isLoading = true;
 
   @override
@@ -18,23 +19,35 @@ class _ProfileState extends State<Profile> {
     super.initState();
     _fetchProfileData();
   }
+  final DatabaseHelper _dbHelper = DatabaseHelper(); // Create an instance
 
   Future<void> _fetchProfileData() async {
-    // Replace 'someUserId' with the actual user ID
-    String userId = 'someUserId';
+    String userId = FirebaseAuth.instance.currentUser!.uid;
 
     try {
-      // Fetch user data from Firestore
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('userId', isEqualTo: userId)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
+      // Fetch from local database first
+      Map<String, dynamic>? localProfile = await _dbHelper.getUserProfile(userId);
+      if (localProfile != null) {
         setState(() {
-          _profileData = querySnapshot.docs.first.data() as Map<String, dynamic>;
+          _profileData = localProfile;
           _isLoading = false;
         });
+        return; // Data found locally, no need to fetch from Firebase
+      }
+
+      // Fetch from Firebase if not found locally
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        setState(() {
+          _profileData = userDoc.data() as Map<String, dynamic>;
+          _isLoading = false;
+        });
+        // Save to local database for offline use
+        await _dbHelper.insertUserProfile(_profileData);
       } else {
         // Handle case where user data is not found
         _showSnackBar('User data not found.');
