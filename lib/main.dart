@@ -2,22 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'screens/Home.dart'; // Import your Home screen
-import 'screens/InitLogin.dart'; // Import your login screen
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'screens/Home.dart';
+import 'screens/InitLogin.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Required for shared_preferences
+  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   // Check login status
-
-
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false; // Get login status, default to false
-  bool isGuest = prefs.getBool('isGuest') ?? false; // Get guest status, default to false
+  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+  bool isGuest = prefs.getBool('isGuest') ?? false;
 
-  runApp(MyApp(isLoggedIn: isLoggedIn, isGuest: isGuest));
+  // Check if the user is already authenticated with Firebase
+  bool isFirebaseLoggedIn = FirebaseAuth.instance.currentUser != null;
+
+  runApp(MyApp(
+    isLoggedIn: isLoggedIn || isFirebaseLoggedIn,
+    isGuest: isGuest,
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -36,7 +42,7 @@ class MyApp extends StatelessWidget {
       ),
       home: isLoggedIn || isGuest
           ? const Home()
-          : const InitLogin(), // Conditional navigation
+          : const InitLogin(),
     );
   }
 }
