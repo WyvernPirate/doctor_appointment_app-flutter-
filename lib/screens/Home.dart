@@ -37,7 +37,8 @@ class _HomeState extends State<Home> {
 
   // Google Maps variables
   late GoogleMapController mapController;
-  final LatLng _center = const LatLng(45.521563, -122.677433); // Default location
+  // Center on Gaborone, Botswana
+  final LatLng _gaboroneCenter = const LatLng(-24.6545, 25.9086);
 
   @override
   void initState() {
@@ -80,9 +81,9 @@ class _HomeState extends State<Home> {
 
     // If user confirmed logout, proceed
     if (confirmLogout) {
-    //  SharedPreferences prefs = await SharedPreferences.getInstance();
-     // await prefs.setBool('isLoggedIn', false);
-     // await prefs.setBool('isGuest', false); // Reset isGuest on logout
+     // SharedPreferences prefs = await SharedPreferences.getInstance();
+      //await prefs.setBool('isLoggedIn', false);
+      //await prefs.setBool('isGuest', false); // Reset isGuest on logout
 
       // Navigate back to the login screen
       Navigator.pushReplacement(
@@ -118,20 +119,24 @@ class _HomeState extends State<Home> {
       body: Column(
         children: [
           _isGuest
-            ? const Text("You are in guest mode")
-            : const Text("You are logged in"),
-         _searchSection(),
+              ? const Text("You are in guest mode")
+              : const Text("You are logged in"),
+          _searchSection(),
 
           // Google Maps Section
-          Expanded(
-            flex: 1,
+          SizedBox( //Wrap google maps in a container for height control
+            height: 200, // Set the desired height for the map
             child: GoogleMap(
               onMapCreated: _onMapCreated,
               initialCameraPosition: CameraPosition(
-                target: _center,
-                zoom: 11.0,
+                target: _gaboroneCenter,
+                zoom: 12.0, // Adjust the zoom level for Gaborone
               ),
-            ),
+              // Optional: Disable map interaction
+               //mapToolbarEnabled: false,
+               //scrollGesturesEnabled: false,
+               //zoomControlsEnabled: false,
+              ),
           ),
           // Doctor List Section
           Expanded(
@@ -142,7 +147,7 @@ class _HomeState extends State<Home> {
                 final doctor = _doctors[index];
                 return ListTile(
                   leading: CircleAvatar(
-                   // backgroundImage: AssetImage(doctor['image']!),
+                    //backgroundImage: AssetImage(doctor['image']!), //If you have the images in your assets folder uncomment this.
                   ),
                   title: Text(doctor['name']!),
                   subtitle: Text(doctor['speciality']!),
@@ -176,10 +181,10 @@ class _HomeState extends State<Home> {
 
   Container _searchSection() {
     return Container(
-      margin: EdgeInsets.only(top: 10, left: 20, right: 20),
+      margin: const EdgeInsets.only(top: 10, left: 20, right: 20),
       decoration: BoxDecoration(
         boxShadow: [
-          BoxShadow(
+          const BoxShadow(
             color: Color.fromARGB(255, 207, 191, 193),
             blurRadius: 20,
             spreadRadius: 0.0,
@@ -190,11 +195,11 @@ class _HomeState extends State<Home> {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: EdgeInsets.all(15),
+          contentPadding: const EdgeInsets.all(15),
           hintText: 'Search for Doctor, Place, Specialists...',
-          hintStyle: TextStyle(color: Color(0xffDDDADA), fontSize: 14),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.all(15),
+          hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.all(15),
             child: Icon(Icons.search),
           ),
           suffixIcon: SizedBox(
@@ -203,7 +208,7 @@ class _HomeState extends State<Home> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  VerticalDivider(
+                  const VerticalDivider(
                     color: Colors.black,
                     indent: 10,
                     endIndent: 10,
