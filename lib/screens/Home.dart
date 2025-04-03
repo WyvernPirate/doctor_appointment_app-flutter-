@@ -81,9 +81,9 @@ class _HomeState extends State<Home> {
 
     // If user confirmed logout, proceed
     if (confirmLogout) {
-     // SharedPreferences prefs = await SharedPreferences.getInstance();
-      //await prefs.setBool('isLoggedIn', false);
-      //await prefs.setBool('isGuest', false); // Reset isGuest on logout
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.setBool('isGuest', false); // Reset isGuest on logout
 
       // Navigate back to the login screen
       Navigator.pushReplacement(
@@ -122,22 +122,7 @@ class _HomeState extends State<Home> {
               ? const Text("You are in guest mode")
               : const Text("You are logged in"),
           _searchSection(),
-
-          // Google Maps Section
-          SizedBox( //Wrap google maps in a container for height control
-            height: 200, // Set the desired height for the map
-            child: GoogleMap(
-              onMapCreated: _onMapCreated,
-              initialCameraPosition: CameraPosition(
-                target: _gaboroneCenter,
-                zoom: 12.0, // Adjust the zoom level for Gaborone
-              ),
-              // Optional: Disable map interaction
-               //mapToolbarEnabled: false,
-               //scrollGesturesEnabled: false,
-               //zoomControlsEnabled: false,
-              ),
-          ),
+          _mapSection(),
           // Doctor List Section
           Expanded(
             flex: 1,
@@ -147,7 +132,7 @@ class _HomeState extends State<Home> {
                 final doctor = _doctors[index];
                 return ListTile(
                   leading: CircleAvatar(
-                    //backgroundImage: AssetImage(doctor['image']!), //If you have the images in your assets folder uncomment this.
+                    //backgroundImage: AssetImage(doctor['image']!), 
                   ),
                   title: Text(doctor['name']!),
                   subtitle: Text(doctor['speciality']!),
@@ -177,6 +162,33 @@ class _HomeState extends State<Home> {
         onTap: _onItemTapped,
       ),
     );
+  }
+
+  Container _mapSection() {
+    return Container(
+          margin: const EdgeInsets.only(top: 10, left: 10, right: 10),
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black),
+            borderRadius: BorderRadius.circular(10)
+          ),
+          child: SizedBox( 
+            width: double.infinity,
+            height: 300,
+            
+            child: GoogleMap(
+              onMapCreated: _onMapCreated,
+              initialCameraPosition: CameraPosition(
+                target: _gaboroneCenter,
+                zoom: 12.0, // Adjust the zoom level for Gaborone
+              ),
+              // Optional: Disable map interaction
+                 //mapToolbarEnabled: false,
+                 //scrollGesturesEnabled: false,
+                 zoomControlsEnabled: false,
+              ),
+          ),
+        );
   }
 
   Container _searchSection() {
