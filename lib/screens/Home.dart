@@ -2,9 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'InitLogin.dart'; // Import your login screen
-import 'Appointments.dart'; // Import your Appointments screen
-import 'Profile.dart'; // Import your Profile screen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'InitLogin.dart';
+import 'Appointments.dart';
+import 'Profile.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -15,14 +16,13 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   bool _isGuest = false;
-  int _selectedIndex = 0; // Track selected tab in bottom navigation
+  int _selectedIndex = 0;
 
-  // Sample doctor data (replace with your actual data)
   final List<Map<String, String>> _doctors = [
     {
       'name': 'Dr. John Doe',
       'speciality': 'Cardiologist',
-      'image': 'assets/doctor1.jpg', // Replace with actual image paths
+      'image': 'assets/doctor1.jpg',
     },
     {
       'name': 'Dr. Jane Smith',
@@ -67,27 +67,27 @@ class _HomeState extends State<Home> {
             TextButton(
               child: const Text('Cancel'),
               onPressed: () {
-                Navigator.of(context).pop(false); // Return false (don't logout)
+                Navigator.of(context).pop(false);
               },
             ),
             TextButton(
               child: const Text('Logout'),
               onPressed: () {
-                Navigator.of(context).pop(true); // Return true (logout)
+                Navigator.of(context).pop(true);
               },
             ),
           ],
         );
       },
-    ) ?? false; // If dialog is dismissed, default to false
+    ) ?? false;
 
-    // If user confirmed logout, proceed
     if (confirmLogout) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', false);
-      await prefs.setBool('isGuest', false); // Reset isGuest on logout
+      await prefs.setBool('isGuest', false);
+      await FirebaseAuth.instance.signOut();
 
-      // Navigate back to the login screen
+      // ignore: use_build_context_synchronously
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const InitLogin()),
@@ -109,17 +109,16 @@ class _HomeState extends State<Home> {
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
-        return _homeScreenBody(); 
+        return _homeScreenBody();
       case 1:
-        return const Appointments(); 
+        return const Appointments();
       case 2:
-        return const Profile(); 
+        return const Profile();
       default:
-        return _homeScreenBody(); 
+        return _homeScreenBody();
     }
   }
 
-  
   Widget _homeScreenBody() {
     return Column(
       children: [
@@ -166,11 +165,11 @@ class _HomeState extends State<Home> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: _handleLogout, // Call the logout function
+            onPressed: _handleLogout,
           ),
         ],
       ),
-      body: _buildBody(), // function to build the body
+      body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -207,7 +206,7 @@ class _HomeState extends State<Home> {
           onMapCreated: _onMapCreated,
           initialCameraPosition: CameraPosition(
             target: _gaboroneCenter,
-            zoom: 12.0, // Adjust the zoom level for Gaborone
+            zoom: 12.0,
           ),
           // Optional: Disable map interaction
           //mapToolbarEnabled: false,

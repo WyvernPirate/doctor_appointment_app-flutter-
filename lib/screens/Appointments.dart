@@ -10,7 +10,7 @@ class Appointments extends StatefulWidget {
 
 class _AppointmentsState extends State<Appointments> {
   // Sample appointment data (replace with data from Firebase later)
-  List<Map<String, String>> _appointments = [
+  final List<Map<String, String>> _appointments = [
     {
       'doctor': 'Dr. John Doe',
       'specialty': 'Cardiologist',
