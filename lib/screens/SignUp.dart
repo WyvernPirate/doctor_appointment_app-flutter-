@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
-import 'ProfileCreation.dart'; // Import ProfileCreation
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'ProfileCreation.dart';
 import 'Home.dart';
 import 'InitLogin.dart';
 
@@ -32,7 +32,7 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> _handleSignUp() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate()) { // This line was causing the error
       setState(() {
         _isLoading = true;
       });
@@ -41,20 +41,20 @@ class _SignUpState extends State<SignUp> {
         final String password = _passwordController.text.trim();
         final String confirmPassword = _confirmPasswordController.text.trim();
 
-if (password != confirmPassword) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passwords do not match')),
-        );
-        return;
-      }
+        if (password != confirmPassword) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Passwords do not match')),
+          );
+          return;
+        }
 
-      if (password.length < 6) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Password must be at least 6 characters')),
-        );
-        return;
-      }
+        if (password.length < 6) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Password must be at least 6 characters')),
+          );
+          return;
+        }
 
         // Create user with email and password
         UserCredential userCredential =
@@ -70,7 +70,6 @@ if (password != confirmPassword) {
             .set({
           'userId': userCredential.user!.uid,
           'email': email,
-          // Add more fields as needed
         });
 
         // If successful, save login state and navigate
@@ -119,7 +118,12 @@ if (password != confirmPassword) {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(child: Column(children: [_signUpSection()])),
+          : SingleChildScrollView(
+              child: Form( // Add the Form widget here
+                key: _formKey, // Associate the key with the Form
+                child: Column(children: [_signUpSection()]),
+              ),
+            ),
     );
   }
 
@@ -139,28 +143,6 @@ if (password != confirmPassword) {
           ),
         ),
         const Padding(
-          padding: EdgeInsets.only(top: 5, left: 15),
-          child: Text(
-            'Full Name',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextField(
-            
-            decoration: const InputDecoration(
-              labelText: 'Enter your full name',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.name,
-          ),
-        ),
-        const Padding(
           padding: EdgeInsets.only(top: 20, left: 15),
           child: Text(
             'Email Address',
@@ -173,13 +155,22 @@ if (password != confirmPassword) {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextField(
+          child: TextFormField( // Use TextFormField
             controller: _emailController,
             decoration: const InputDecoration(
               labelText: 'Enter your email',
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your email';
+              }
+              if (!value.contains('@')) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
           ),
         ),
         const Padding(
@@ -195,13 +186,22 @@ if (password != confirmPassword) {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextField(
+          child: TextFormField( // Use TextFormField
             controller: _passwordController,
             decoration: const InputDecoration(
               labelText: 'Enter your new password',
               border: OutlineInputBorder(),
             ),
             obscureText: true,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
           ),
         ),
         const Padding(
@@ -217,13 +217,22 @@ if (password != confirmPassword) {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextField(
+          child: TextFormField( // Use TextFormField
             controller: _confirmPasswordController,
             decoration: const InputDecoration(
               labelText: 'Confirm your password',
               border: OutlineInputBorder(),
             ),
             obscureText: true,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please confirm your password';
+              }
+              if (value != _passwordController.text) {
+                return 'Passwords do not match';
+              }
+              return null;
+            },
           ),
         ),
 
