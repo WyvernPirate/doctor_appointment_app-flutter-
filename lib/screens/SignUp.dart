@@ -2,12 +2,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ProfileCreation.dart';
-import 'Home.dart';
-import 'InitLogin.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -32,7 +29,7 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> _handleSignUp() async {
-    if (_formKey.currentState!.validate()) { // This line was causing the error
+    if (_formKey.currentState!.validate()) { 
       setState(() {
         _isLoading = true;
       });
@@ -78,7 +75,6 @@ class _SignUpState extends State<SignUp> {
         await prefs.setBool('isGuest', false);
 
         // Navigate to ProfileCreation screen
-        // ignore: use_build_context_synchronously
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const ProfileCreation()),
@@ -92,6 +88,8 @@ class _SignUpState extends State<SignUp> {
           errorMessage = 'The account already exists for that email.';
         } else if (e.code == 'invalid-email') {
           errorMessage = 'The email address is badly formatted.';
+        }else if (e.code == 'user-disabled') {
+          errorMessage = 'This user account has been disabled.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
