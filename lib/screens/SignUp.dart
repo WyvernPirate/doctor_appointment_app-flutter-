@@ -1,8 +1,13 @@
+// SignUp.dart
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'ProfileCreation.dart'; // Import ProfileCreation
 import 'Home.dart';
+import 'InitLogin.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -12,7 +17,7 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  final _fullNameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -20,7 +25,6 @@ class _SignUpState extends State<SignUp> {
 
   @override
   void dispose() {
-    _fullNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -28,27 +32,16 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> _handleSignUp() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final String fullName = _fullNameController.text.trim();
-      final String email = _emailController.text.trim();
-      final String password = _passwordController.text.trim();
-      final String confirmPassword = _confirmPasswordController.text.trim();
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        final String email = _emailController.text.trim();
+        final String password = _passwordController.text.trim();
+        final String confirmPassword = _confirmPasswordController.text.trim();
 
-      // Basic validation
-      if (fullName.isEmpty ||
-          email.isEmpty ||
-          password.isEmpty ||
-          confirmPassword.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill in all fields')),
-        );
-        return;
-      }
-
-      if (password != confirmPassword) {
+if (password != confirmPassword) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Passwords do not match')),
         );
@@ -63,52 +56,67 @@ class _SignUpState extends State<SignUp> {
         return;
       }
 
-      // Create user with email and password
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+        // Create user with email and password
+        UserCredential userCredential =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
 
-      // If successful, save login state and navigate
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setBool('isGuest', false);
+        // Store user data in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+          'userId': userCredential.user!.uid,
+          'email': email,
+          // Add more fields as needed
+        });
 
-      // Navigate to the Home screen
-      // ignore: use_build_context_synchronously
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Home()),
-      );
-    } on FirebaseAuthException catch (e) {
-      // Handle Firebase authentication errors
-      String errorMessage = 'An error occurred.';
-      if (e.code == 'email-already-in-use') {
-        errorMessage = 'The email address is already in use by another account.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is badly formatted.';
-      } else if (e.code == 'weak-password') {
-        errorMessage = 'The password is too weak.';
+        // If successful, save login state and navigate
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setBool('isGuest', false);
+
+        // Navigate to ProfileCreation screen
+        // ignore: use_build_context_synchronously
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileCreation()),
+        );
+      } on FirebaseAuthException catch (e) {
+        // Handle Firebase authentication errors
+        String errorMessage = 'An error occurred.';
+        if (e.code == 'weak-password') {
+          errorMessage = 'The password provided is too weak.';
+        } else if (e.code == 'email-already-in-use') {
+          errorMessage = 'The account already exists for that email.';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'The email address is badly formatted.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      } catch (e) {
+        // Handle other errors
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('An unexpected error occurred.')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } catch (e) {
-      // Handle other errors
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An unexpected error occurred.')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('Sign Up'),
+        centerTitle: true,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(child: Column(children: [_signUpSection()])),
@@ -144,7 +152,7 @@ class _SignUpState extends State<SignUp> {
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
           child: TextField(
-            controller: _fullNameController,
+            
             decoration: const InputDecoration(
               labelText: 'Enter your full name',
               border: OutlineInputBorder(),
@@ -297,4 +305,4 @@ class _SignUpState extends State<SignUp> {
       ],
     );
   }
- }
+}
