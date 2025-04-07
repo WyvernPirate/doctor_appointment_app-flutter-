@@ -119,7 +119,6 @@ class _SignUpState extends State<SignUp> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 50),
         const Padding(
           padding: EdgeInsets.all(15.0),
           child: Text(
@@ -298,4 +297,4 @@ class _SignUpState extends State<SignUp> {
       ],
     );
   }
-}
+ }
