@@ -56,7 +56,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
           // Upload image to Firebase Storage
           String fileName = path.basename(_profileImage!.path);
           Reference storageReference =
-              FirebaseStorage.instance.ref().child('profile_images/$fileName');
+              FirebaseStorage.instance.ref().child('profile_images/${FirebaseAuth.instance.currentUser!.uid}/$fileName');
           UploadTask uploadTask = storageReference.putFile(_profileImage!);
           await uploadTask.whenComplete(() async {
             imageUrl = await storageReference.getDownloadURL();
