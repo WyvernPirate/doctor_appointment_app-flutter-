@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Home.dart';
 import 'PasswordReset.dart';
-import 'ProfileCreation.dart';
 import 'SignUp.dart';
 
 class InitLogin extends StatefulWidget {
@@ -21,6 +20,7 @@ class _InitLoginState extends State<InitLogin> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
@@ -29,7 +29,32 @@ class _InitLoginState extends State<InitLogin> {
     super.dispose();
   }
 
+  // Function to load user data from Firestore
+  Future<void> _loadUserData(String userId) async {
+    try {
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+      if (userDoc.exists) {
+        // User data found, you can now access it
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+        // Example: Accessing user's name
+        String userName = userData['name'];
+        print('User Name: $userName');
+        // ... access other user data fields ...
+        // You can store this data in a global state management solution (like Provider, Riverpod, etc.)
+        // or pass it to the Home screen if needed.
+      } else {
+        // User data not found
+        print('User data not found for userId: $userId');
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
   Future<void> _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
     setState(() {
       _isLoading = true;
     });
@@ -56,9 +81,10 @@ class _InitLoginState extends State<InitLogin> {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setBool('isGuest', false);
 
-      
+      // Load user data from Firestore
+      await _loadUserData(userCredential.user!.uid);
 
-      // Navigate to the appropriate screen
+      // Navigate to the Home screen
       // ignore: use_build_context_synchronously
       Navigator.pushReplacement(
         context,
@@ -91,8 +117,7 @@ class _InitLoginState extends State<InitLogin> {
       });
     }
   }
-
-  
+  }
 
   Future<void> _handleSkipLogin() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -149,7 +174,7 @@ class _InitLoginState extends State<InitLogin> {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextField(
+          child: TextFormField(
             controller: _emailController,
             decoration: const InputDecoration(
               labelText: 'Enter your Email',
@@ -171,7 +196,7 @@ class _InitLoginState extends State<InitLogin> {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextField(
+          child: TextFormField(
             controller: _passwordController,
             decoration: const InputDecoration(
               labelText: 'Enter your Password',
