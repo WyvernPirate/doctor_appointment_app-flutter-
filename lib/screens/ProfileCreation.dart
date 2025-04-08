@@ -10,7 +10,7 @@ import 'package:path/path.dart' as path; // Import the path package
 import 'Home.dart'; // Import your Home screen
 
 class ProfileCreation extends StatefulWidget {
-  const ProfileCreation({Key? key}) : super(key: key);
+  const ProfileCreation({super.key});
 
   @override
   _ProfileCreationState createState() => _ProfileCreationState();

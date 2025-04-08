@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:doctor_appointment_app/models/DatabaseHelper.dart';
 
-import '/models/DatabaseHelper.dart'; // Import the DatabaseHelper
+// Import the DatabaseHelper
 
 class Appointments extends StatefulWidget {
   const Appointments({super.key});
