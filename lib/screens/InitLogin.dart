@@ -56,16 +56,14 @@ class _InitLoginState extends State<InitLogin> {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setBool('isGuest', false);
 
-      // Check if it's the first time login
-      bool isFirstTime = await _checkFirstTime(userCredential.user!.uid);
+      
 
       // Navigate to the appropriate screen
       // ignore: use_build_context_synchronously
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (context) =>
-                isFirstTime ? const ProfileCreation() : const Home()),
+            builder: (context) => const Home()),
       );
     } on FirebaseAuthException catch (e) {
       // Handle Firebase authentication errors
@@ -94,13 +92,7 @@ class _InitLoginState extends State<InitLogin> {
     }
   }
 
-  Future<bool> _checkFirstTime(String userId) async {
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .get();
-    return !userDoc.exists;
-  }
+  
 
   Future<void> _handleSkipLogin() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

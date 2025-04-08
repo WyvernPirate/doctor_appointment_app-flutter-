@@ -10,7 +10,8 @@ import 'package:path/path.dart' as path; // Import the path package
 import 'Home.dart'; // Import your Home screen
 
 class ProfileCreation extends StatefulWidget {
-  const ProfileCreation({super.key});
+  final String userId;
+  const ProfileCreation({super.key,required this.userId});
 
   @override
   _ProfileCreationState createState() => _ProfileCreationState();
@@ -27,6 +28,13 @@ class _ProfileCreationState extends State<ProfileCreation> {
   File? _profileImage;
   bool _isLoading = false;
 
+
+   @override
+   void initState() {
+     super.initState();
+     // Initialize the email field with the current user's email if available
+     _emailController.text = FirebaseAuth.instance.currentUser?.email ?? '';
+   }
   // Image Picker
   final ImagePicker _picker = ImagePicker();
 
@@ -65,7 +73,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
 
       // Store user data in Firestore
       await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).set({
-        'userId': FirebaseAuth.instance.currentUser!.uid,
+        'userId': widget.userId,
         'name': _nameController.text,
         'email': _emailController.text,
         'phone': _phoneController.text,
@@ -77,7 +85,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
 
       // Save profile data to local database
       await _dbHelper.insertUserProfile({
-        'userId': FirebaseAuth.instance.currentUser!.uid,
+        'userId': widget.userId,
         'name': _nameController.text,
         'email': _emailController.text,
         'phone': _phoneController.text,

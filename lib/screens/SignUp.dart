@@ -77,7 +77,7 @@ class _SignUpState extends State<SignUp> {
         // Navigate to ProfileCreation screen
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const ProfileCreation()),
+          MaterialPageRoute(builder: (context) => ProfileCreation(userId: userCredential.user!.uid)),
         );
       } on FirebaseAuthException catch (e) {
         // Handle Firebase authentication errors
