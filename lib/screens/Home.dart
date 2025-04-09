@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// Remove firebase_auth import
 import 'InitLogin.dart';
 import 'Appointments.dart';
 import 'Profile.dart';
@@ -17,6 +17,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
+  String? _loggedInUserId; // Store user ID to differentiate logged-in from guest
 
   final List<Map<String, String>> _doctors = [
     {
@@ -34,60 +35,66 @@ class _HomeState extends State<Home> {
       'speciality': 'Pediatrician',
       'image': 'assets/doctor3.jpg',
     },
-    // Add more doctors here...
+    // ... doctor data ...
   ];
 
-  // Google Maps variables
+  // Google Maps variables - remain the same
   late GoogleMapController mapController;
-  // Center on Gaborone, Botswana
   final LatLng _gaboroneCenter = const LatLng(-24.6545, 25.9086);
 
   @override
   void initState() {
     super.initState();
-    _loadGuestStatus();
+    _loadUserStatus(); // Renamed for clarity
   }
 
-  Future<void> _loadGuestStatus() async {
+  // Load both guest status and logged-in user ID
+  Future<void> _loadUserStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return; // Check if widget is still mounted
     setState(() {
       _isGuest = prefs.getBool('isGuest') ?? false;
+      _loggedInUserId = prefs.getString('loggedInUserId'); // Check if a user ID exists
     });
   }
 
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
+    // Show confirmation dialog - remains the same
     bool confirmLogout = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              child: const Text('Logout'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirm Logout'),
+              content: const Text('Are you sure you want to logout?'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                ),
+                TextButton(
+                  child: const Text('Logout'),
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                ),
+              ],
+            );
+          },
+        ) ?? false;
 
     if (confirmLogout) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', false);
+      // *** Remove the loggedInUserId to signify logout ***
+      await prefs.remove('loggedInUserId');
+      // Explicitly set isGuest to false when logging out
       await prefs.setBool('isGuest', false);
-      await FirebaseAuth.instance.signOut();
+      // *** Remove FirebaseAuth.instance.signOut() ***
 
-      // ignore: use_build_context_synchronously
+      // Navigate back to Login screen - remains the same
+      // Use mounted check before navigation
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const InitLogin()),
@@ -95,36 +102,78 @@ class _HomeState extends State<Home> {
     }
   }
 
+  // _onMapCreated - remains the same
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
 
+  // _onItemTapped - remains the same
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
-  // Function to build the body based on the selected index
+  // Function to build the body based on the selected index - remains the same
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
         return _homeScreenBody();
       case 1:
-        return const Appointments();
+        // Only show Appointments if logged in (not guest)
+        return _isGuest ? _guestModeNotice("view appointments") : const Appointments();
       case 2:
-        return const Profile();
+        // Only show Profile if logged in (not guest)
+        return _isGuest ? _guestModeNotice("view your profile") : const Profile();
       default:
         return _homeScreenBody();
     }
   }
 
+  // Helper widget for guest mode restriction
+  Widget _guestModeNotice(String action) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.person_off, size: 60, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              'Please log in to $action.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to login
+                 Navigator.pushReplacement(
+                   context,
+                   MaterialPageRoute(builder: (context) => const InitLogin()),
+                 );
+              },
+              child: const Text('Go to Login'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+
   Widget _homeScreenBody() {
+    // UI remains largely the same, but the top text can be more specific
     return Column(
       children: [
-        _isGuest
-            ? const Text("You are in guest mode")
-            : const Text("You are logged in"),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            _isGuest ? "Browsing as Guest" : "Welcome!", // More specific text
+            style: TextStyle(fontSize: 16, color: _isGuest ? Colors.orange : Colors.green),
+          ),
+        ),
         _searchSection(),
         _mapSection(),
         Container(
@@ -135,7 +184,7 @@ class _HomeState extends State<Home> {
             style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
           ),
         ),
-        // Doctor List Section
+        // Doctor List Section - remains the same
         Expanded(
           flex: 1,
           child: ListView.builder(
@@ -144,10 +193,12 @@ class _HomeState extends State<Home> {
               final doctor = _doctors[index];
               return ListTile(
                 leading: CircleAvatar(
-                  //backgroundImage: AssetImage(doctor['image']!),
+                  backgroundImage: AssetImage(doctor['image']!), // Assuming you have assets
+                //  onBackgroundImageError: (_, __) {}, // Handle missing assets
                 ),
                 title: Text(doctor['name']!),
                 subtitle: Text(doctor['speciality']!),
+                // Add onTap later for booking
               );
             },
           ),
@@ -163,10 +214,13 @@ class _HomeState extends State<Home> {
         title: const Text('Home Screen'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _handleLogout,
-          ),
+          // Only show logout button if the user is actually logged in (not guest)
+          if (!_isGuest && _loggedInUserId != null)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout', // Add tooltip
+              onPressed: _handleLogout,
+            ),
         ],
       ),
       body: _buildBody(),
@@ -192,6 +246,7 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // _mapSection - remains the same
   Container _mapSection() {
     return Container(
       margin: const EdgeInsets.only(top: 10, left: 10, right: 10),
@@ -217,6 +272,7 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // _searchSection - remains the same
   Container _searchSection() {
     return Container(
       margin: const EdgeInsets.only(top: 10, left: 20, right: 20),
