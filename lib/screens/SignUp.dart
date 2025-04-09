@@ -1,10 +1,9 @@
 // SignUp.dart
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ProfileCreation.dart';
+import '../utils/hash_helper.dart'; // Import the hashing utility
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -29,86 +28,44 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> _handleSignUp() async {
-    if (_formKey.currentState!.validate()) { 
+    if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
       try {
         final String email = _emailController.text.trim();
         final String password = _passwordController.text.trim();
-        final String confirmPassword = _confirmPasswordController.text.trim();
+      
+        // *** HASH THE PASSWORD *
+        final String hashedPassword = HashHelper.hashPassword(password);
 
-        if (password != confirmPassword) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Passwords do not match')),
-          );
-          return;
-        }
-
-        if (password.length < 6) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Password must be at least 6 characters')),
-          );
-          return;
-        }
-
-        // Create user with email and password
-        UserCredential userCredential =
-            await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-
-        // Store user data in Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
-          'userId': userCredential.user!.uid,
-          'email': email,
-        });
-
-        // If successful, save login state and navigate
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setBool('isGuest', false);
-
-        // Navigate to ProfileCreation screen
+      
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ProfileCreation(userId: userCredential.user!.uid)),
+          MaterialPageRoute(
+              builder: (context) => ProfileCreation(
+                    email: email,
+                    hashedPassword: hashedPassword,
+                    // No userId needed here yet, will be generated in ProfileCreation
+                  )),
         );
-      } on FirebaseAuthException catch (e) {
-        // Handle Firebase authentication errors
-        String errorMessage = 'An error occurred.';
-        if (e.code == 'weak-password') {
-          errorMessage = 'The password provided is too weak.';
-        } else if (e.code == 'email-already-in-use') {
-          errorMessage = 'The account already exists for that email.';
-        } else if (e.code == 'invalid-email') {
-          errorMessage = 'The email address is badly formatted.';
-        }else if (e.code == 'user-disabled') {
-          errorMessage = 'This user account has been disabled.';
-        }
+        
+      } catch (e, stackTrace) { // Catch potential errors during hashing or navigation
+        print("Error during sign up navigation: $e");
+        print(stackTrace);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
+          const SnackBar(content: Text('An error occurred preparing profile creation.')),
         );
-      } catch (e) {
-        // Handle other errors
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An unexpected error occurred.')),
-        );
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
+         setState(() { // Ensure loading stops on error
+           _isLoading = false;
+         });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sign Up'),
@@ -117,8 +74,8 @@ class _SignUpState extends State<SignUp> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              child: Form( // Add the Form widget here
-                key: _formKey, // Associate the key with the Form
+              child: Form(
+                key: _formKey,
                 child: Column(children: [_signUpSection()]),
               ),
             ),
@@ -126,10 +83,17 @@ class _SignUpState extends State<SignUp> {
   }
 
   Column _signUpSection() {
+     // --- UI remains largely the same ---
+     // Make sure the password confirmation validator works:
+     // validator: (value) {
+     //   if (value == null || value.isEmpty) { return 'Please confirm password'; }
+     //   if (value != _passwordController.text) { return 'Passwords do not match'; }
+     //   return null;
+     // },
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         const Padding(
           padding: EdgeInsets.all(15.0),
           child: Text(
             'Sign Up',
@@ -151,9 +115,9 @@ class _SignUpState extends State<SignUp> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextFormField( // Use TextFormField
+         Padding(
+           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
+           child: TextFormField(  // Use TextFormField
             controller: _emailController,
             decoration: const InputDecoration(
               labelText: 'Enter your email',
@@ -215,50 +179,40 @@ class _SignUpState extends State<SignUp> {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0, top: 6.0),
-          child: TextFormField( // Use TextFormField
-            controller: _confirmPasswordController,
-            decoration: const InputDecoration(
-              labelText: 'Confirm your password',
-              border: OutlineInputBorder(),
-            ),
-            obscureText: true,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please confirm your password';
-              }
-              if (value != _passwordController.text) {
-                return 'Passwords do not match';
-              }
-              return null;
-            },
-          ),
-        ),
-
-        //TODO: implement a terms and contions check
-        Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _handleSignUp,
-              style: ElevatedButton.styleFrom(
+          child: TextFormField(
+             controller: _confirmPasswordController,
+             decoration: const InputDecoration(
+               labelText: 'Confirm your password',
+               border: OutlineInputBorder(),
+             ),
+             obscureText: true,
+             validator: (value) { // Ensure validator is correct
+               if (value == null || value.isEmpty) {
+                 return 'Please confirm your password';
+               }
+               if (value != _passwordController.text) {
+                 return 'Passwords do not match';
+               }
+               return null;
+             },
+           ),
+         ),
+         Padding(
+           padding: const EdgeInsets.all(15.0),
+           child: SizedBox(
+             width: double.infinity,
+             height: 50,
+             child: ElevatedButton(
+               onPressed: _handleSignUp, 
+               child: const Text('Sign Up'),style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text(
-                'Sign Up',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
               ),
             ),
           ),
-        ),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 20.0),
           child: Row(

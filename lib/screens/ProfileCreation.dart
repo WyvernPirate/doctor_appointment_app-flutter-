@@ -1,17 +1,19 @@
 // ProfileCreation.dart
 import 'dart:io';
 import 'package:doctor_appointment_app/models/DatabaseHelper.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // For storing images
-import 'package:cloud_firestore/cloud_firestore.dart'; // For storing user data
-import 'package:path/path.dart' as path; // Import the path package
-import 'Home.dart'; // Import your Home screen
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart'; 
+import 'Home.dart';
 
 class ProfileCreation extends StatefulWidget {
-  final String userId;
-  const ProfileCreation({super.key,required this.userId});
+
+  final String email;
+  final String hashedPassword;
+  const ProfileCreation({super.key, required this.email, required this.hashedPassword});
 
   @override
   _ProfileCreationState createState() => _ProfileCreationState();
@@ -20,26 +22,37 @@ class ProfileCreation extends StatefulWidget {
 class _ProfileCreationState extends State<ProfileCreation> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _emailController = TextEditingController(); 
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _dobController = TextEditingController();
-  String _gender = 'Male'; // Default gender
+  String _gender = 'Male';
   File? _profileImage;
   bool _isLoading = false;
 
-
-   @override
-   void initState() {
-     super.initState();
-     // Initialize the email field with the current user's email if available
-     _emailController.text = FirebaseAuth.instance.currentUser?.email ?? '';
-   }
-  // Image Picker
   final ImagePicker _picker = ImagePicker();
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the email field using the passed email
+    _emailController.text = widget.email;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _dobController.dispose();
+    super.dispose();
+  }
+
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile =
+     final XFile? pickedFile =
         await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
@@ -47,68 +60,83 @@ class _ProfileCreationState extends State<ProfileCreation> {
       });
     }
   }
-  
-  
-  final DatabaseHelper _dbHelper = DatabaseHelper(); // Create an instance
 
- // Save Profile Data to Firebase
+  // Save Profile Data to Firestore
   Future<void> _saveProfile() async {
+    // Instantiate DatabaseHelper for local DB
+    final DatabaseHelper dbHelper = DatabaseHelper();
+
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
-    try {
-      String? imageUrl;
+      try {
+        String? imageUrl;
+        // Firestore document reference 
+        DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc();
+        String generatedUserId = userDocRef.id; // Get the generated ID
+
         if (_profileImage != null) {
-          // Upload image to Firebase Storage
           String fileName = path.basename(_profileImage!.path);
-          Reference storageReference =
-              FirebaseStorage.instance.ref().child('profile_images/${FirebaseAuth.instance.currentUser!.uid}/$fileName');
+          // Use the generatedUserId for storage path
+          Reference storageReference = FirebaseStorage.instance
+              .ref()
+              .child('profile_images/$generatedUserId/$fileName');
           UploadTask uploadTask = storageReference.putFile(_profileImage!);
           await uploadTask.whenComplete(() async {
             imageUrl = await storageReference.getDownloadURL();
           });
         }
 
-      // Store user data in Firestore
-      await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).set({
-        'userId': widget.userId,
-        'name': _nameController.text,
-        'email': _emailController.text,
-        'phone': _phoneController.text,
+        // Store user data in Firestore using the generated ID
+        await userDocRef.set({
+          'userId': generatedUserId, // Store the generated ID itself
+          'name': _nameController.text,
+          'email': widget.email, // Use the original email passed
+          'phone': _phoneController.text,
+          'address': _addressController.text,
+          'dob': _dobController.text,
+          'gender': _gender,
+          'profileImageUrl': imageUrl,
+          // *** STORE THE HASHED PASSWORD ***
+          'hashedPassword': widget.hashedPassword,
+          // Add creation timestamp, etc. if needed
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // Save profile data to local database (optional)
+        await dbHelper.insertUserProfile({
+          'userId': generatedUserId, // Use generated ID
+          'name': _nameController.text,
+          'email': widget.email,
+          'phone': _phoneController.text,
         'address': _addressController.text,
         'dob': _dobController.text,
         'gender': _gender,
-        'profileImageUrl': imageUrl,
-      });
+        
+          'profileImageUrl': imageUrl,
+        });
 
-      // Save profile data to local database
-      await _dbHelper.insertUserProfile({
-        'userId': widget.userId,
-        'name': _nameController.text,
-        'email': _emailController.text,
-        'phone': _phoneController.text,
-        'address': _addressController.text,
-        'dob': _dobController.text,
-        'gender': _gender,
-        'profileImageUrl': imageUrl,
-      });
+        // *** Store generatedUserId locally to signify login ***
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('loggedInUserId', generatedUserId);
+        await prefs.setBool('isGuest', false); // Explicitly set not guest
 
-    // Navigate to Home screen after successful profile creation
+        // Navigate to Home screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const Home()),
         );
-      } catch (e) {
-        // Handle errors
+      } catch (e, stackTrace) {
         print('Error saving profile: $e');
+        print(stackTrace);
         _showSnackBar('Error saving profile. Please try again.');
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
+         setState(() { // Ensure loading stops on error
+           _isLoading = false;
+         });
       }
+      // Removed finally block
     }
   }
 
@@ -123,6 +151,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Your Profile'),
@@ -137,7 +166,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Profile Image
+                   // Profile Image
                     GestureDetector(
                       onTap: _pickImage,
                       child: CircleAvatar(
@@ -170,23 +199,16 @@ class _ProfileCreationState extends State<ProfileCreation> {
                     const SizedBox(height: 10),
 
                     // Email
-                    TextFormField(
+                    TextFormField( // Email field
                       controller: _emailController,
+                      readOnly: true, // Make email read-only here
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
+                      
                     ),
-                    const SizedBox(height: 10),
+                   const SizedBox(height: 10),
 
                     // Phone
                     TextFormField(
