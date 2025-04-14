@@ -62,3 +62,5 @@ This project is a Flutter-based mobile application that allows patients to searc
 
 ## TODO
 encrypt passwords and email
+
+implement a local db for doctors
