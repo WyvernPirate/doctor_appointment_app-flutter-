@@ -31,7 +31,7 @@ class Doctor {
     );
   }
 
-  // Optional: Method to convert Doctor instance to a Map for Firestore
+  //Method to convert Doctor instance to a Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'name': name,
