@@ -1,7 +1,6 @@
 // SignUp.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'ProfileCreation.dart';
 import '../utils/hash_helper.dart'; // Import the hashing utility
 
@@ -83,7 +82,7 @@ class _SignUpState extends State<SignUp> {
   }
 
   Column _signUpSection() {
-     // --- UI remains largely the same ---
+    
      // Make sure the password confirmation validator works:
      // validator: (value) {
      //   if (value == null || value.isEmpty) { return 'Please confirm password'; }
@@ -203,13 +202,13 @@ class _SignUpState extends State<SignUp> {
              width: double.infinity,
              height: 50,
              child: ElevatedButton(
-               onPressed: _handleSignUp, 
-               child: const Text('Sign Up'),style: ElevatedButton.styleFrom(
+               onPressed: _handleSignUp,style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-              ),
+              ), 
+               child: const Text('Sign Up'),
               ),
             ),
           ),
