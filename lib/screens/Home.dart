@@ -47,7 +47,7 @@ class _HomeState extends State<Home> {
     });
   }
 
-// fetch doctoers from firebase
+// fetch doctors from firebase
   Future<void> _fetchDoctors() async {
     if (!mounted) return;
     setState(() {
