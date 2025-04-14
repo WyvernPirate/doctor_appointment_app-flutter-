@@ -1,8 +1,11 @@
-// Home.dart
+// lib/screens/Home.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-// Remove firebase_auth import
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '/models/doctor.dart';
+import '/widgets/doctor_list_item.dart'; 
 import 'InitLogin.dart';
 import 'Appointments.dart';
 import 'Profile.dart';
@@ -17,120 +20,133 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
-  String? _loggedInUserId; // Store user ID to differentiate logged-in from guest
+  String? _loggedInUserId;
 
-  final List<Map<String, String>> _doctors = [
-    {
-      'name': 'Dr. John Doe',
-      'speciality': 'Cardiologist',
-      'image': 'assets/doctor1.jpg',
-    },
-    {
-      'name': 'Dr. Jane Smith',
-      'speciality': 'Dermatologist',
-      'image': 'assets/doctor2.jpg',
-    },
-    {
-      'name': 'Dr. David Lee',
-      'speciality': 'Pediatrician',
-      'image': 'assets/doctor3.jpg',
-    },
-    // ... doctor data ...
-  ];
+  // --- Firestore Doctor Data State ---
+  List<Doctor> _doctors = [];
+  bool _isLoadingDoctors = true;
+  String? _errorLoadingDoctors;
+  // --- End Firestore Doctor Data State ---
 
-  // Google Maps variables - remain the same
   late GoogleMapController mapController;
   final LatLng _gaboroneCenter = const LatLng(-24.6545, 25.9086);
 
   @override
   void initState() {
     super.initState();
-    _loadUserStatus(); // Renamed for clarity
+    _loadUserStatus();
+    _fetchDoctors();
   }
-
-  // Load both guest status and logged-in user ID
+// load the user status
   Future<void> _loadUserStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (!mounted) return; // Check if widget is still mounted
+    if (!mounted) return;
     setState(() {
       _isGuest = prefs.getBool('isGuest') ?? false;
-      _loggedInUserId = prefs.getString('loggedInUserId'); // Check if a user ID exists
+      _loggedInUserId = prefs.getString('loggedInUserId');
     });
   }
 
+// fetch doctoers from firebase
+  Future<void> _fetchDoctors() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingDoctors = true;
+      _errorLoadingDoctors = null;
+    });
+    try {
+      QuerySnapshot querySnapshot =
+          await FirebaseFirestore.instance.collection('doctors').get();
+      if (mounted) {
+        setState(() {
+          _doctors = querySnapshot.docs
+              .map((doc) => Doctor.fromFirestore(doc))
+              .toList();
+          _isLoadingDoctors = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      print("Error fetching doctors: $e");
+      print(stackTrace);
+      if (mounted) {
+        setState(() {
+          _errorLoadingDoctors = 'Failed to load doctors. Please try again.';
+          _isLoadingDoctors = false;
+        });
+      }
+    }
+  }
+
+//Handle logout
   Future<void> _handleLogout() async {
-    // Show confirmation dialog - remains the same
     bool confirmLogout = await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Confirm Logout'),
-              content: const Text('Are you sure you want to logout?'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('Cancel'),
-                  onPressed: () {
-                    Navigator.of(context).pop(false);
-                  },
-                ),
-                TextButton(
-                  child: const Text('Logout'),
-                  onPressed: () {
-                    Navigator.of(context).pop(true);
-                  },
-                ),
-              ],
-            );
-          },
-        ) ?? false;
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: const Text('Logout'),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    ) ??
+        false;
 
     if (confirmLogout) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      // *** Remove the loggedInUserId to signify logout ***
       await prefs.remove('loggedInUserId');
-      // Explicitly set isGuest to false when logging out
       await prefs.setBool('isGuest', false);
-      // *** Remove FirebaseAuth.instance.signOut() ***
 
-      // Navigate back to Login screen - remains the same
-      // Use mounted check before navigation
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const InitLogin()),
+        (Route<dynamic> route) => false,
       );
     }
   }
 
-  // _onMapCreated - remains the same
+// create map 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
 
-  // _onItemTapped - remains the same
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
-  // Function to build the body based on the selected index - remains the same
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
         return _homeScreenBody();
       case 1:
-        // Only show Appointments if logged in (not guest)
-        return _isGuest ? _guestModeNotice("view appointments") : const Appointments();
+        return _isGuest
+            ? _guestModeNotice("view appointments")
+            : const Appointments();
       case 2:
-        // Only show Profile if logged in (not guest)
-        return _isGuest ? _guestModeNotice("view your profile") : const Profile();
+        return _isGuest
+            ? _guestModeNotice("view your profile")
+            : const Profile();
       default:
         return _homeScreenBody();
     }
   }
 
-  // Helper widget for guest mode restriction
+  //Logic for guest mode
   Widget _guestModeNotice(String action) {
     return Center(
       child: Padding(
@@ -148,11 +164,10 @@ class _HomeState extends State<Home> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Navigate to login
-                 Navigator.pushReplacement(
-                   context,
-                   MaterialPageRoute(builder: (context) => const InitLogin()),
-                 );
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InitLogin()),
+                );
               },
               child: const Text('Go to Login'),
             )
@@ -162,48 +177,94 @@ class _HomeState extends State<Home> {
     );
   }
 
-
   Widget _homeScreenBody() {
-    // UI remains largely the same, but the top text can be more specific
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(16.0),
           child: Text(
-            _isGuest ? "Browsing as Guest" : "Welcome!", // More specific text
-            style: TextStyle(fontSize: 16, color: _isGuest ? Colors.orange : Colors.green),
+            _isGuest ? "Browsing as Guest" : "Welcome!",
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: _isGuest ? Colors.orangeAccent : Colors.blueAccent),
           ),
         ),
         _searchSection(),
         _mapSection(),
-        Container(
-          margin: const EdgeInsets.only(top: 10, left: 10),
-          alignment: Alignment.topLeft,
-          child: const Text(
-            'Doctors:',
-            style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        Padding(
+          padding: const EdgeInsets.only(top: 15, left: 16, right: 16, bottom: 5),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Available Doctors',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+               //refresh button
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh Doctors',
+                onPressed: _fetchDoctors,
+          ),
+            ],
           ),
         ),
-        // Doctor List Section - remains the same
         Expanded(
           flex: 1,
-          child: ListView.builder(
-            itemCount: _doctors.length,
-            itemBuilder: (context, index) {
-              final doctor = _doctors[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: AssetImage(doctor['image']!), // Assuming you have assets
-                //  onBackgroundImageError: (_, __) {}, // Handle missing assets
-                ),
-                title: Text(doctor['name']!),
-                subtitle: Text(doctor['speciality']!),
-                // Add onTap later for booking
-              );
-            },
-          ),
+          child: _buildDoctorList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildDoctorList() {
+    if (_isLoadingDoctors) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorLoadingDoctors != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red[700], size: 50),
+              const SizedBox(height: 10),
+              Text(
+                _errorLoadingDoctors!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red[700], fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_doctors.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'No doctors found at the moment.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    // display doctors in listview
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 5, bottom: 10),
+      itemCount: _doctors.length,
+      itemBuilder: (context, index) {
+        final doctor = _doctors[index];
+        return DoctorListItem(doctor: doctor);
+      },
     );
   }
 
@@ -211,14 +272,13 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home Screen'),
+        title: const Text('Doctor Appointment'),
         centerTitle: true,
         actions: [
-          // Only show logout button if the user is actually logged in (not guest)
           if (!_isGuest && _loggedInUserId != null)
             IconButton(
               icon: const Icon(Icons.logout),
-              tooltip: 'Logout', // Add tooltip
+              tooltip: 'Logout',
               onPressed: _handleLogout,
             ),
         ],
@@ -227,26 +287,28 @@ class _HomeState extends State<Home> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(Icons.home_filled),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
+            icon: Icon(Icons.calendar_today_outlined),
             label: 'Appointments',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+            icon: Icon(Icons.person_outline),
             label: 'Profile',
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: Theme.of(context).primaryColor,
+        unselectedItemColor: Colors.grey[600],
+        showUnselectedLabels: true,
         onTap: _onItemTapped,
       ),
     );
   }
 
-  // _mapSection - remains the same
+// map section
   Container _mapSection() {
     return Container(
       margin: const EdgeInsets.only(top: 10, left: 10, right: 10),
@@ -272,7 +334,6 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // _searchSection - remains the same
   Container _searchSection() {
     return Container(
       margin: const EdgeInsets.only(top: 10, left: 20, right: 20),
