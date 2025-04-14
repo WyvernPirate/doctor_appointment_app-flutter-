@@ -1,14 +1,13 @@
 // InitLogin.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-// Remove firebase_auth import
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Home.dart';
-import 'PasswordReset.dart'; // This will need a custom implementation now
+import 'PasswordReset.dart'; // TODO: implementation
 import 'SignUp.dart';
-import '../utils/hash_helper.dart'; // Import the hashing utility
+import '../utils/hash_helper.dart'; 
 
 class InitLogin extends StatefulWidget {
   const InitLogin({super.key});
@@ -21,7 +20,7 @@ class _InitLoginState extends State<InitLogin> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  final _formKey = GlobalKey<FormState>(); // Keep form key
+  final _formKey = GlobalKey<FormState>(); 
 
   @override
   void dispose() {
@@ -64,8 +63,6 @@ class _InitLoginState extends State<InitLogin> {
               context,
               MaterialPageRoute(builder: (context) => const Home()),
             );
-            // No need to return here, navigation replaces the screen
-
           } else {
             // Password does not match
             _showError('Incorrect password.');
@@ -80,7 +77,7 @@ class _InitLoginState extends State<InitLogin> {
         _showError('An unexpected error occurred during login.');
       } finally {
         // Ensure loading indicator stops regardless of outcome
-        if (mounted) { // Check if the widget is still in the tree
+        if (mounted) { 
           setState(() {
             _isLoading = false;
           });

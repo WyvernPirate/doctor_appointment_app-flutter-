@@ -82,7 +82,7 @@ class _SignUpState extends State<SignUp> {
   }
 
   Column _signUpSection() {
-     // --- UI remains largely the same ---
+    
      // Make sure the password confirmation validator works:
      // validator: (value) {
      //   if (value == null || value.isEmpty) { return 'Please confirm password'; }
