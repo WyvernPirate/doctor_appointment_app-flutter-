@@ -59,3 +59,8 @@ This project is a Flutter-based mobile application that allows patients to searc
     ```
 
 ## Project Structure
+
+## TODO
+encrypt passwords and email
+
+implement a local db for doctors
