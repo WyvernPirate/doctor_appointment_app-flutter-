@@ -190,6 +190,7 @@ class _HomeState extends State<Home> {
   }
 
   //Logic for guest mode
+  
   Widget _guestModeNotice(String action) {
      return Center(
       child: Padding(
