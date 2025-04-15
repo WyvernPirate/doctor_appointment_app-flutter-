@@ -5,7 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '/models/doctor.dart';
-import '/widgets/doctor_list_item.dart'; 
+import '/widgets/doctor_list_item.dart';
 import 'InitLogin.dart';
 import 'Appointments.dart';
 import 'Profile.dart';
@@ -34,20 +34,51 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    _loadUserStatus();
+    _initializeHome();
     _fetchDoctors();
   }
-// load the user status
+
+  // Helper function for async initialization
+  Future<void> _initializeHome() async {
+    await _loadUserStatus(); // Wait for user status
+    if (mounted) {
+      // Check if widget is still mounted before showing SnackBar
+      _showWelcomeSnackBar(); // Show the welcome message
+    }
+  }
+
+  // load the user status
   Future<void> _loadUserStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
     setState(() {
       _isGuest = prefs.getBool('isGuest') ?? false;
       _loggedInUserId = prefs.getString('loggedInUserId');
     });
   }
 
-// fetch doctors from firebase
+  //Function to show the welcome SnackBar 
+  void _showWelcomeSnackBar() {
+    final message = _isGuest ? "Browsing as Guest" : "Welcome!";
+    final snackBar = SnackBar(
+      content: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+      duration: const Duration(seconds: 3), // Adjust duration as needed
+      backgroundColor: _isGuest ? Colors.orangeAccent : Colors.blueAccent,
+      behavior: SnackBarBehavior.floating, // Makes it float above the BottomNavBar
+      margin: const EdgeInsets.only(bottom: 70.0, left: 20.0, right: 20.0), // Adjust margin
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+    );
+
+    // Ensure Scaffold is available before showing SnackBar
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  // fetch doctors from firebase
   Future<void> _fetchDoctors() async {
     if (!mounted) return;
     setState(() {
@@ -67,17 +98,29 @@ class _HomeState extends State<Home> {
       }
     } catch (e, stackTrace) {
       print("Error fetching doctors: $e");
-      print(stackTrace);
+      print(stackTrace); //stack trace for debugging
       if (mounted) {
+
+        //error message detail
+        String errorMessage = 'Failed to load doctors.';
+        if (e is FirebaseException) {
+           errorMessage += ' (Code: ${e.code})';
+        } else if (e is FormatException || e is TypeError || e.toString().contains('toDouble')) {
+           errorMessage = 'Error processing doctor data. Please check data format.';
+           print("Data processing error likely related to Firestore data types.");
+        } else {
+           errorMessage += ' Please try again.';
+        }
+
         setState(() {
-          _errorLoadingDoctors = 'Failed to load doctors. Please try again.';
+          _errorLoadingDoctors = errorMessage;
           _isLoadingDoctors = false;
         });
       }
     }
   }
 
-//Handle logout
+  //Handle logout
   Future<void> _handleLogout() async {
     bool confirmLogout = await showDialog(
       context: context,
@@ -118,7 +161,7 @@ class _HomeState extends State<Home> {
     }
   }
 
-// create map 
+  // create map
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
@@ -148,7 +191,7 @@ class _HomeState extends State<Home> {
 
   //Logic for guest mode
   Widget _guestModeNotice(String action) {
-    return Center(
+     return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -181,16 +224,6 @@ class _HomeState extends State<Home> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            _isGuest ? "Browsing as Guest" : "Welcome!",
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: _isGuest ? Colors.orangeAccent : Colors.blueAccent),
-          ),
-        ),
         _searchSection(),
         _mapSection(),
         Padding(
@@ -202,12 +235,12 @@ class _HomeState extends State<Home> {
                 'Available Doctors',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-               //refresh button
+              //refresh button
               IconButton(
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh Doctors',
                 onPressed: _fetchDoctors,
-          ),
+              ),
             ],
           ),
         ),
@@ -220,7 +253,7 @@ class _HomeState extends State<Home> {
   }
 
   Widget _buildDoctorList() {
-    if (_isLoadingDoctors) {
+     if (_isLoadingDoctors) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -270,7 +303,7 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+     return Scaffold(
       appBar: AppBar(
         title: const Text('Doctor Appointment'),
         centerTitle: true,
@@ -308,9 +341,9 @@ class _HomeState extends State<Home> {
     );
   }
 
-// map section
+  // map section
   Container _mapSection() {
-    return Container(
+     return Container(
       margin: const EdgeInsets.only(top: 10, left: 10, right: 10),
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
@@ -318,7 +351,7 @@ class _HomeState extends State<Home> {
           borderRadius: BorderRadius.circular(10)),
       child: SizedBox(
         width: double.infinity,
-        height: 280,
+        height: 280, 
         child: GoogleMap(
           onMapCreated: _onMapCreated,
           initialCameraPosition: CameraPosition(
@@ -335,7 +368,7 @@ class _HomeState extends State<Home> {
   }
 
   Container _searchSection() {
-    return Container(
+     return Container(
       margin: const EdgeInsets.only(top: 10, left: 20, right: 20),
       decoration: BoxDecoration(
         boxShadow: [
