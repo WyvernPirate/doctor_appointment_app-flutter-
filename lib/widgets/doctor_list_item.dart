@@ -5,7 +5,7 @@ import '../models/doctor.dart';
 class DoctorListItem extends StatelessWidget {
   final Doctor doctor;
 
-  const DoctorListItem({Key? key, required this.doctor}) : super(key: key);
+  const DoctorListItem({super.key, required this.doctor});
 
   @override
   Widget build(BuildContext context) {
