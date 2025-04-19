@@ -129,16 +129,22 @@ class _HomeState extends State<Home> {
     setState(() {
       _isLoadingDoctors = true;
       _errorLoadingDoctors = null;
+      _filteredDoctors = [];
+      _selectedSpecialtyFilter = null;
+      _searchController.clear();
+      _doctors = [];
     });
     try {
       QuerySnapshot querySnapshot =
           await FirebaseFirestore.instance.collection('doctors').get();
       if (mounted) {
-        setState(() {
-          _doctors = querySnapshot.docs
+        final fetchedDoctors = querySnapshot.docs
               .map((doc) => Doctor.fromFirestore(doc))
               .toList();
+        setState(() {
+          _doctors = fetchedDoctors;
           _isLoadingDoctors = false;
+          _filteredDoctors;
         });
       }
     } catch (e, stackTrace) {
@@ -160,6 +166,8 @@ class _HomeState extends State<Home> {
         setState(() {
           _errorLoadingDoctors = errorMessage;
           _isLoadingDoctors = false;
+          _filteredDoctors = [];
+          _doctors = [];
         });
       }
     }
@@ -438,21 +446,20 @@ class _HomeState extends State<Home> {
             padding: EdgeInsets.all(15),
             child: Icon(Icons.search),
           ),
-          suffixIcon: Row( // Use Row to keep clear button and filter button
-            mainAxisSize: MainAxisSize.min, // Take only necessary space
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min, 
             children: [
-              // Clear button (appears when text is entered)
+              // Clear button 
               if (_searchController.text.isNotEmpty)
                 IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey),
                   tooltip: 'Clear Search',
                   onPressed: () {
                     _searchController.clear();
-                    // _onSearchChanged is called by the listener
                   },
                 ),
                 const SizedBox(
-                 height: 30, // Adjust height as needed
+                 height: 30, 
                  child: VerticalDivider(
                    color: Colors.grey,
                    indent: 5,
@@ -461,7 +468,7 @@ class _HomeState extends State<Home> {
                  ),
               ),
               // Filter Dropdown Button
-              PopupMenuButton<String?>( // Use String? for nullable value (All)
+              PopupMenuButton<String?>( 
                 icon: Icon(
                   Icons.filter_list,
                   // Indicate if a filter is active
