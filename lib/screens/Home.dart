@@ -22,11 +22,17 @@ class _HomeState extends State<Home> {
   int _selectedIndex = 0;
   String? _loggedInUserId;
 
-  // --- Firestore Doctor Data State ---
+   // --- Search State ---
+  final TextEditingController _searchController = TextEditingController();
+  List<Doctor> _filteredDoctors = [];
+  String? _selectedSpecialtyFilter;
+
+  
+
+  //Firestore Doctor Data State
   List<Doctor> _doctors = [];
   bool _isLoadingDoctors = true;
   String? _errorLoadingDoctors;
-  // --- End Firestore Doctor Data State ---
 
   late GoogleMapController mapController;
   final LatLng _gaboroneCenter = const LatLng(-24.6545, 25.9086);
@@ -76,6 +82,45 @@ class _HomeState extends State<Home> {
 
     // Ensure Scaffold is available before showing SnackBar
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+ // --- Helper for Specialties ---
+  Set<String> _getUniqueSpecialties() {
+    // Use a Set to automatically handle uniqueness
+    return _doctors.map((doctor) => doctor.specialty).toSet();
+  }
+  // --- Search Logic ---
+  void _onSearchChanged() {
+    _filterDoctors(_searchController.text);
+  }
+
+  void _filterDoctors(String query) {
+    if (!mounted) return; // Ensure widget is still mounted
+
+    final lowerCaseQuery = query.toLowerCase().trim();
+    List<Doctor> tempFilteredList = List.from(_doctors); // Start with all doctors
+
+    // 1. Apply Text Filter (if query exists)
+    if (lowerCaseQuery.isNotEmpty) {
+      tempFilteredList = tempFilteredList.where((doctor) {
+        final lowerCaseName = doctor.name.toLowerCase();
+        final lowerCaseSpecialty = doctor.specialty.toLowerCase();
+        return lowerCaseName.contains(lowerCaseQuery) ||
+               lowerCaseSpecialty.contains(lowerCaseQuery);
+      }).toList();
+    }
+
+    // 2. Apply Specialty Filter (if selected)
+    if (_selectedSpecialtyFilter != null) {
+      tempFilteredList = tempFilteredList.where((doctor) {
+        return doctor.specialty == _selectedSpecialtyFilter;
+      }).toList();
+    }
+
+    // Update the state with the final filtered list
+    setState(() {
+      _filteredDoctors = tempFilteredList;
+    });
   }
 
   // fetch doctors from firebase
@@ -368,8 +413,9 @@ class _HomeState extends State<Home> {
     );
   }
 
+    // search section - updated with controller and filter dropdown
   Container _searchSection() {
-     return Container(
+    return Container(
       margin: const EdgeInsets.only(top: 10, left: 20, right: 20),
       decoration: BoxDecoration(
         boxShadow: [
@@ -381,35 +427,102 @@ class _HomeState extends State<Home> {
         ],
       ),
       child: TextField(
+        controller: _searchController, // Assign the controller here
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.all(15),
-          hintText: 'Search for Doctor, Place, Specialists...',
+          hintText: 'Search Doctor or Specialty...', // Updated hint text
           hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
           prefixIcon: const Padding(
             padding: EdgeInsets.all(15),
             child: Icon(Icons.search),
           ),
-          suffixIcon: SizedBox(
-            width: 100,
-            child: IntrinsicHeight(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const VerticalDivider(
-                    color: Colors.black,
-                    indent: 10,
-                    endIndent: 10,
-                    thickness: 0.7,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Icon(Icons.filter_list),
-                  ),
-                ],
+          suffixIcon: Row( // Use Row to keep clear button and filter button
+            mainAxisSize: MainAxisSize.min, // Take only necessary space
+            children: [
+              // Clear button (appears when text is entered)
+              if (_searchController.text.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  tooltip: 'Clear Search',
+                  onPressed: () {
+                    _searchController.clear();
+                    // _onSearchChanged is called by the listener
+                  },
+                ),
+                const SizedBox(
+                 height: 30, // Adjust height as needed
+                 child: VerticalDivider(
+                   color: Colors.grey,
+                   indent: 5,
+                   endIndent: 5,
+                   thickness: 0.7,
+                 ),
               ),
-            ),
+              // Filter Dropdown Button
+              PopupMenuButton<String?>( // Use String? for nullable value (All)
+                icon: Icon(
+                  Icons.filter_list,
+                  // Indicate if a filter is active
+                  color: _selectedSpecialtyFilter == null ? Colors.grey : Theme.of(context).primaryColor,
+                ),
+                tooltip: 'Filter by Specialty',
+                onSelected: (String? selectedValue) {
+                  // Update state and re-filter
+                  setState(() {
+                    _selectedSpecialtyFilter = selectedValue;
+                  });
+                  _filterDoctors(_searchController.text); // Re-apply filters
+                },
+                itemBuilder: (BuildContext context) {
+                  // Get unique specialties
+                  Set<String> specialties = _getUniqueSpecialties();
+
+                  // Create menu items
+                  List<PopupMenuEntry<String?>> menuItems = [];
+
+                  // Add "All Specialties" option first
+                  menuItems.add(
+                    PopupMenuItem<String?>(
+                      value: null, // Null value represents 'All'
+                      child: Text(
+                        'All Specialties',
+                        style: TextStyle(
+                          fontWeight: _selectedSpecialtyFilter == null
+                              ? FontWeight.bold // Highlight if selected
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+
+                  // Add separator
+                  if (specialties.isNotEmpty) {
+                     menuItems.add(const PopupMenuDivider());
+                  }
+
+                  // Add each unique specialty
+                  for (String specialty in specialties) {
+                    menuItems.add(
+                      PopupMenuItem<String?>(
+                        value: specialty,
+                        child: Text(
+                          specialty,
+                           style: TextStyle(
+                            fontWeight: _selectedSpecialtyFilter == specialty
+                                ? FontWeight.bold // Highlight if selected
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return menuItems;
+                },
+              ),
+              const SizedBox(width: 8), // Add some padding
+            ],
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
@@ -419,4 +532,5 @@ class _HomeState extends State<Home> {
       ),
     );
   }
+
 }
