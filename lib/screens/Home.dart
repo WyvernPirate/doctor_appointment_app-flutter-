@@ -36,12 +36,21 @@ class _HomeState extends State<Home> {
 
   late GoogleMapController mapController;
   final LatLng _gaboroneCenter = const LatLng(-24.6545, 25.9086);
+  
+  
 
   @override
   void initState() {
     super.initState();
     _initializeHome();
     _fetchDoctors();
+    _searchController.addListener(_onSearchChanged);
+  }
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
   }
 
   // Helper function for async initialization
@@ -144,7 +153,7 @@ class _HomeState extends State<Home> {
         setState(() {
           _doctors = fetchedDoctors;
           _isLoadingDoctors = false;
-          _filteredDoctors;
+          _filterDoctors(_searchController.text);
         });
       }
     } catch (e, stackTrace) {
@@ -275,6 +284,9 @@ class _HomeState extends State<Home> {
   }
 
   Widget _homeScreenBody() {
+
+    bool isFiltered = _selectedSpecialtyFilter != null || _searchController.text.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -285,15 +297,15 @@ class _HomeState extends State<Home> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Available Doctors',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Text(
+                isFiltered ? 'Filtered Doctors' : 'Available Doctors',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               //refresh button
               IconButton(
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh Doctors',
-                onPressed: _fetchDoctors,
+                onPressed: _isLoadingDoctors ? null : _fetchDoctors,
               ),
             ],
           ),
@@ -331,7 +343,8 @@ class _HomeState extends State<Home> {
       );
     }
 
-    if (_doctors.isEmpty) {
+if(_filteredDoctors.isEmpty){
+    if (_doctors.isEmpty && _searchController.text.isEmpty && _selectedSpecialtyFilter == null) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
@@ -342,14 +355,28 @@ class _HomeState extends State<Home> {
           ),
         ),
       );
-    }
+    }else {
+      // Filter returned no results
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            // More informative message based on filters
+            'No doctors match your current filters.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
 
+    }
+}
     // display doctors in listview
     return ListView.builder(
       padding: const EdgeInsets.only(top: 5, bottom: 10),
-      itemCount: _doctors.length,
+      itemCount: _filteredDoctors.length,
       itemBuilder: (context, index) {
-        final doctor = _doctors[index];
+        final doctor = _filteredDoctors[index];
         return DoctorListItem(doctor: doctor);
       },
     );
@@ -435,12 +462,12 @@ class _HomeState extends State<Home> {
         ],
       ),
       child: TextField(
-        controller: _searchController, // Assign the controller here
+        controller: _searchController,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.all(15),
-          hintText: 'Search Doctor or Specialty...', // Updated hint text
+          hintText: 'Search Doctor or Specialty...',
           hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
           prefixIcon: const Padding(
             padding: EdgeInsets.all(15),
