@@ -1,44 +1,68 @@
 // lib/models/doctor.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart'; // Keep if location is still used elsewhere
 
 class Doctor {
-  final String id; // Firestore document ID
+  final String id;
   final String name;
   final String specialty;
-  final String imageUrl; // URL for the doctor's image
-  final double rating; // Optional: Example field
-  final String bio; // Optional: Example field
+  final String address;
+  final String phone;
+  final String imageUrl;
+  final double rating;
+  final int reviews;
+  final LatLng? location; // Keep if needed for details page, otherwise remove
+  final bool isFavorite; // <-- Add this field
 
   Doctor({
     required this.id,
     required this.name,
     required this.specialty,
+    required this.address,
+    required this.phone,
     required this.imageUrl,
-    this.rating = 0.0, // Default value
-    this.bio = '', // Default value
+    required this.rating,
+    required this.reviews,
+    this.location,
+    this.isFavorite = false, // Default to false
   });
 
-  //constructor to create a Doctor instance from a Firestore document
   factory Doctor.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    // Handle potential GeoPoint for location
+    LatLng? loc;
+    if (data['location'] is GeoPoint) {
+      GeoPoint point = data['location'];
+      loc = LatLng(point.latitude, point.longitude);
+    }
+
     return Doctor(
       id: doc.id,
-      name: data['name'] ?? 'Unknown Name', // Provide default values
-      specialty: data['specialty'] ?? 'Unknown Specialty',
-      imageUrl: data['imageUrl'] ?? '', // Handle missing image URL
-      rating: (data['rating'] ?? 0.0).toDouble(), // Ensure it's a double
-      bio: data['bio'] ?? '',
+      name: data['name'] ?? 'N/A',
+      specialty: data['specialty'] ?? 'N/A',
+      address: data['address'] ?? 'N/A',
+      phone: data['phone'] ?? 'N/A',
+      imageUrl: data['imageUrl'] ?? '', // Provide default empty string
+      rating: (data['rating'] ?? 0.0).toDouble(),
+      reviews: data['reviews'] ?? 0,
+      location: loc,
+      isFavorite: data['isFavorite'] ?? false, // <-- Get from Firestore or default
     );
   }
 
-  //Method to convert Doctor instance to a Map for Firestore
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'specialty': specialty,
-      'imageUrl': imageUrl,
-      'rating': rating,
-      'bio': bio,
-    };
-  }
+  // Add toJson if you need to save updates back to Firestore
+  Map<String, dynamic> toJson() {
+     return {
+       'name': name,
+       'specialty': specialty,
+       'address': address,
+       'phone': phone,
+       'imageUrl': imageUrl,
+       'rating': rating,
+       'reviews': reviews,
+       'location': location != null ? GeoPoint(location!.latitude, location!.longitude) : null,
+       'isFavorite': isFavorite,
+     };
+   }
 }
