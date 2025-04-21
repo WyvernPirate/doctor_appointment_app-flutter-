@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'; // If showing map
 import 'package:url_launcher/url_launcher.dart'; // For launching calls/maps
 import '/models/doctor.dart';
+// Import Appointment Booking Screen if you have one
+// import 'AppointmentBookingScreen.dart';
 
 class DoctorDetails extends StatefulWidget {
   final String doctorId; // ID of the doctor to display
@@ -22,7 +24,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   bool _isLoading = true;
   String? _error;
 
-  // --- Map Controller ---
+  // --- Map Controller (Optional) ---
   GoogleMapController? _mapController;
 
   @override
@@ -88,7 +90,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     }
   }
 
-  // --- Helper to launch maps ---
+  // --- Helper to launch maps (Optional) ---
   Future<void> _launchMap(LatLng? location, String? address) async {
     if (location == null && (address == null || address.isEmpty)) {
        ScaffoldMessenger.of(context).showSnackBar(
@@ -121,6 +123,25 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     }
   }
 
+  // --- Handle Booking Action ---
+  void _handleBooking() {
+    if (_doctor == null) return; // Should not happen if button is visible
+
+    // TODO: Implement navigation to the actual booking screen
+    // Example:
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => AppointmentBookingScreen(doctor: _doctor!),
+    //   ),
+    // );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Book Appointment with ${_doctor!.name} (Not Implemented)')),
+    );
+  }
+
+
   // --- Build Method ---
   @override
   Widget build(BuildContext context) {
@@ -147,6 +168,19 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         ],
       ),
       body: _buildBodyContent(),
+
+      // --- ADD FLOATING ACTION BUTTON ---
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _isLoading || _doctor == null // Only show if data is loaded
+          ? null
+          : FloatingActionButton.extended( // Use the standard FAB.extended constructor
+              onPressed: _handleBooking,
+              label: const Text('Book Appointment'),
+              icon: const Icon(Icons.calendar_today_outlined),
+              backgroundColor: Theme.of(context).primaryColor, // Optional styling
+              // foregroundColor: Colors.white, // foregroundColor is not directly available on FAB.extended, text/icon color is handled by theme or explicitly on children if needed
+            ),
+      // --- END FLOATING ACTION BUTTON ---
     );
   }
 
@@ -170,25 +204,33 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
     // Doctor data is loaded, build the details UI
     final doctor = _doctor!;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 80), // Padding for the floating button
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeaderSection(doctor),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: _buildInfoSection(doctor),
-          ),
-          const SizedBox(height: 20),
-           if (doctor.location != null)
-             _buildMapSection(doctor),
-          // Optional About Section
-          if (doctor.bio.isNotEmpty) // Assuming a 'bio' field exists
-             _buildAboutSection(doctor),
-
-        ],
+    // Use SafeArea to prevent FAB overlapping bottom system UI elements if needed
+    return SafeArea(
+      // Apply safe area only to the bottom if FAB is centerFloat
+      bottom: true,
+      top: false, // Don't apply to top as AppBar handles it
+      child: SingleChildScrollView(
+        // Padding is adjusted slightly as FAB takes space
+        padding: const EdgeInsets.only(bottom: 90), // Increased bottom padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeaderSection(doctor),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildInfoSection(doctor),
+            ),
+            const SizedBox(height: 20),
+            // Optional Map Section
+            if (doctor.location != null)
+              _buildMapSection(doctor),
+            // Optional About Section
+            // Check if 'bio' exists and is not empty before building
+            if (doctor.bio != null && doctor.bio!.isNotEmpty)
+               _buildAboutSection(doctor),
+          ],
+        ),
       ),
     );
   }
@@ -207,7 +249,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
           // Or use doctor.imageUrl here for a background effect
         ),
         Positioned(
-          top: 70, 
+          top: 70,
           child: CircleAvatar(
             radius: 80,
             backgroundColor: Colors.white,
@@ -225,7 +267,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         ),
         // Text content below the image area
         Padding(
-          padding: const EdgeInsets.only(top: 240.0), 
+          padding: const EdgeInsets.only(top: 240.0),
           child: Column(
             children: [
               Text(
@@ -285,14 +327,14 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               dense: true,
             ),
             // Add more details if available (e.g., working hours)
-            _buildDivider(),
-            ListTile(
-               leading: Icon(Icons.access_time_outlined, color: Theme.of(context).primaryColor),
-               title: const Text('Working Hours'),
-              // subtitle: Text(doctor.workingHours ?? 'Not Available'), // Assuming workingHours field
-               dense: true,
-             ),
-          ],
+              _buildDivider(),
+              ListTile(
+                 leading: Icon(Icons.access_time_outlined, color: Theme.of(context).primaryColor),
+                 title: const Text('Working Hours'),
+                 //subtitle: Text(doctor.workingHours!), // Assuming workingHours field
+                 dense: true,
+               ),
+            ],
         ),
       ),
     );
@@ -319,6 +361,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
      );
   }
 
+  // --- Map Section (Optional) ---
   Widget _buildMapSection(Doctor doctor) {
     if (doctor.location == null) return const SizedBox.shrink();
 
@@ -364,6 +407,4 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-  // --- Floating Action Button (Placeholder) ---
-  // Consider adding a FloatingActionButton for booking if needed
-} 
+} // End of _DoctorDetailsState
