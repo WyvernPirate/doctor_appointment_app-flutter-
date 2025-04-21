@@ -10,9 +10,9 @@ class Doctor {
   final String phone;
   final String imageUrl;
   final double rating;
-  final int reviews;
-  final LatLng? location; // Keep if needed for details page, otherwise remove
-  final bool isFavorite; // <-- Add this field
+  final String bio;
+  final LatLng? location;
+  final bool isFavorite; 
 
   Doctor({
     required this.id,
@@ -22,9 +22,9 @@ class Doctor {
     required this.phone,
     required this.imageUrl,
     required this.rating,
-    required this.reviews,
+    required this.bio,
     this.location,
-    this.isFavorite = false, // Default to false
+    this.isFavorite = false, 
   });
 
   factory Doctor.fromFirestore(DocumentSnapshot doc) {
@@ -43,11 +43,11 @@ class Doctor {
       specialty: data['specialty'] ?? 'N/A',
       address: data['address'] ?? 'N/A',
       phone: data['phone'] ?? 'N/A',
-      imageUrl: data['imageUrl'] ?? '', // Provide default empty string
+      imageUrl: data['imageUrl'] ?? '', 
       rating: (data['rating'] ?? 0.0).toDouble(),
-      reviews: data['reviews'] ?? 0,
+      bio: data['bio'] ?? 'N/A',
       location: loc,
-      isFavorite: data['isFavorite'] ?? false, // <-- Get from Firestore or default
+      isFavorite: data['isFavorite'] ?? false, 
     );
   }
 
@@ -60,7 +60,7 @@ class Doctor {
        'phone': phone,
        'imageUrl': imageUrl,
        'rating': rating,
-       'reviews': reviews,
+       'reviews': bio,
        'location': location != null ? GeoPoint(location!.latitude, location!.longitude) : null,
        'isFavorite': isFavorite,
      };
