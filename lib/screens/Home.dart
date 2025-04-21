@@ -8,7 +8,7 @@ import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
 import 'InitLogin.dart';
 import 'Appointments.dart';
-import 'Profile.dart';
+import 'Profile.dart'; // Ensure Profile.dart exists and is correct
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -28,7 +28,7 @@ class _HomeState extends State<Home> {
   String? _selectedSpecialtyFilter;
   String? _selectedPredefinedFilter;
   final List<String> _predefinedFilters = [
-    'All', 'Cardiology', 'Dental', 'Consultant', 'Skin', 'Pediatrics',
+    'All', 'Cardiology', 'Dermatology', 'Favorites', 'Cardiology', 'Pediatrics',
   ];
 
   // --- Firestore Doctor Data State ---
@@ -90,10 +90,12 @@ class _HomeState extends State<Home> {
 
   // --- Specialties and Filtering ---
   Set<String> _getUniqueSpecialties() {
+    // Get unique specialties from the main doctor list
     return _doctors.map((doctor) => doctor.specialty).toSet();
   }
 
   void _onSearchChanged() {
+    // Trigger filtering when search text changes
     _filterDoctors();
   }
 
@@ -101,7 +103,6 @@ class _HomeState extends State<Home> {
      // Update state when a predefined filter button is tapped
      setState(() {
        _selectedPredefinedFilter = filter;
-       // Reset dropdown filter when a predefined one is chosen (optional)
        _selectedSpecialtyFilter = null;
      });
      _filterDoctors();
@@ -110,8 +111,7 @@ class _HomeState extends State<Home> {
   void _onSpecialtyFilterSelected(String? specialty) {
      // Update state when a specialty is selected from the dropdown
      setState(() {
-       _selectedSpecialtyFilter = specialty;
-       // Reset predefined filter when dropdown is used (optional behavior)
+       _selectedSpecialtyFilter = specialty;     
        _selectedPredefinedFilter = 'All';
      });
      _filterDoctors();
@@ -141,11 +141,13 @@ class _HomeState extends State<Home> {
       tempFilteredList = tempFilteredList.where((doctor) {
         final lowerCaseName = doctor.name.toLowerCase();
         final lowerCaseSpecialty = doctor.specialty.toLowerCase();
+        // Add more fields to search here if needed
         return lowerCaseName.contains(lowerCaseQuery) ||
                lowerCaseSpecialty.contains(lowerCaseQuery);
       }).toList();
     }
 
+    // Update the state with the final filtered list
     setState(() {
       _filteredDoctors = tempFilteredList;
     });
@@ -158,7 +160,7 @@ class _HomeState extends State<Home> {
     setState(() {
       _isLoadingDoctors = true;
       _errorLoadingDoctors = null;
-      // Don't clear filters on refresh, just data
+      // Don't clear filters on refresh, just clear data lists
       _doctors = [];
       _filteredDoctors = [];
       _favoriteDoctors = [];
@@ -227,8 +229,7 @@ class _HomeState extends State<Home> {
           ],
         );
       },
-    ) ??
-        false;
+    ) ?? false; // Default to false if dialog is dismissed
 
     if (confirmLogout) {
       // Clear user session data
@@ -306,18 +307,19 @@ class _HomeState extends State<Home> {
   Widget _homeScreenBody() {
     return Column(
       children: [
+        // --- Search Section (Always visible below AppBar) ---
         Padding(
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
-          child: _searchSection(), 
+          child: _searchSection(), // The search TextField widget
         ),
 
         // --- Scrollable Content Area ---
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _fetchDoctors, 
+            onRefresh: _fetchDoctors, // Enable pull-to-refresh for the list area
             child: CustomScrollView(
               slivers: <Widget>[
-          // --- Predefined Filters (Sliver) ---
+                // --- Predefined Filter Buttons ---
                 SliverToBoxAdapter(
                   child: _buildPredefinedFilters(),
                 ),
@@ -503,11 +505,14 @@ class _HomeState extends State<Home> {
         separatorBuilder: (context, index) => const SizedBox(width: 8), // Space between chips
         itemBuilder: (context, index) {
           final filter = _predefinedFilters[index];
-          final isSelected = filter == _selectedPredefinedFilter;
+          final isSelected = filter == _selectedPredefinedFilter; // Check if this chip is selected
+
+          // Use FilterChip for selectable category buttons
           return FilterChip(
             label: Text(filter),
             selected: isSelected,
             onSelected: (selected) {
+              // Only trigger update if the chip is being selected
               if (selected) {
                  _onPredefinedFilterSelected(filter);
               }
