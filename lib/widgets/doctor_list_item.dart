@@ -5,7 +5,7 @@ import '../models/doctor.dart';
 class DoctorListItem extends StatelessWidget {
   final Doctor doctor;
 
-  const DoctorListItem({super.key, required this.doctor});
+  const DoctorListItem({super.key, required this.doctor, required bool isFavoriteView});
 
   @override
   Widget build(BuildContext context) {
