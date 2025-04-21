@@ -3,8 +3,7 @@ import '/models/DatabaseHelper.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// Import InitLogin if you need it for navigation after deletion
-// import 'InitLogin.dart';
+import 'InitLogin.dart';
 
 // Enum to represent profile settings actions
 enum ProfileAction {
