@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // import 'package:google_maps_flutter/google_maps_flutter.dart'; // temporarily removed map import
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
 import 'InitLogin.dart';
@@ -39,7 +40,7 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    _selectedPredefinedFilter = _predefinedFilters.first;
+    _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
     _initializeHome();
     _fetchDoctors();
     _searchController.addListener(_onSearchChanged);
@@ -97,6 +98,7 @@ class _HomeState extends State<Home> {
   }
 
   void _onPredefinedFilterSelected(String filter) {
+     // Update state when a predefined filter button is tapped
      setState(() {
        _selectedPredefinedFilter = filter;
        // Reset dropdown filter when a predefined one is chosen (optional)
@@ -106,18 +108,21 @@ class _HomeState extends State<Home> {
   }
 
   void _onSpecialtyFilterSelected(String? specialty) {
+     // Update state when a specialty is selected from the dropdown
      setState(() {
        _selectedSpecialtyFilter = specialty;
-       // Reset predefined filter when dropdown is used (optional)
+       // Reset predefined filter when dropdown is used (optional behavior)
        _selectedPredefinedFilter = 'All';
      });
      _filterDoctors();
   }
 
   void _filterDoctors() {
+    // Main filtering logic based on current state
     if (!mounted) return;
+
     final lowerCaseQuery = _searchController.text.toLowerCase().trim();
-    List<Doctor> tempFilteredList = List.from(_doctors);
+    List<Doctor> tempFilteredList = List.from(_doctors); // Start with all doctors
 
     // Apply Predefined Filter
     if (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All') {
@@ -148,6 +153,7 @@ class _HomeState extends State<Home> {
 
   // --- Data Fetching ---
   Future<void> _fetchDoctors() async {
+    // Fetch doctors from Firestore and update state
     if (!mounted) return;
     setState(() {
       _isLoadingDoctors = true;
@@ -166,14 +172,16 @@ class _HomeState extends State<Home> {
             .toList();
         setState(() {
           _doctors = fetchedDoctors;
+          // Populate favorites based on the isFavorite flag from Firestore data
           _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList();
           _isLoadingDoctors = false;
-          _filterDoctors(); // Apply existing filters to new data
+          _filterDoctors(); // Apply current filters to the newly fetched data
         });
       }
     } catch (e, stackTrace) {
       print("Error fetching doctors: $e\n$stackTrace");
       if (mounted) {
+        // Handle errors during fetching
         String errorMessage = 'Failed to load doctors.';
         if (e is FirebaseException) {
           errorMessage += ' (Code: ${e.code})';
@@ -196,6 +204,7 @@ class _HomeState extends State<Home> {
 
   // --- Logout ---
   Future<void> _handleLogout() async {
+    // Show confirmation dialog and handle logout process
     bool confirmLogout = await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -222,10 +231,13 @@ class _HomeState extends State<Home> {
         false;
 
     if (confirmLogout) {
+      // Clear user session data
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove('loggedInUserId');
-      await prefs.setBool('isGuest', false);
+      await prefs.setBool('isGuest', false); // Reset guest status
+
       if (!mounted) return;
+      // Navigate to login screen and remove all previous routes
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const InitLogin()),
@@ -245,6 +257,7 @@ class _HomeState extends State<Home> {
 
   // --- Body Building Logic ---
   Widget _buildBody() {
+    // Return the appropriate screen based on the selected bottom nav index
     switch (_selectedIndex) {
       case 0:
         return _homeScreenBody();
@@ -257,6 +270,7 @@ class _HomeState extends State<Home> {
     }
   }
 
+  // Widget to display when user is in guest mode for restricted sections
   Widget _guestModeNotice(String action) {
      return Center(
       child: Padding(
@@ -274,6 +288,7 @@ class _HomeState extends State<Home> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
+                // Navigate to login screen
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const InitLogin()),
@@ -287,124 +302,139 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // Builds the main content for the Home tab 
   Widget _homeScreenBody() {
-    return RefreshIndicator(
-      onRefresh: _fetchDoctors, // Pull down to refresh works
-      child: CustomScrollView(
-        slivers: <Widget>[
-          SliverAppBar(
-            title: const Text('Doctor Appointment'), 
-            centerTitle: true, 
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Match background
-            elevation: 1, 
-            pinned: true,  
-            floating: true, 
-            snap: false,   
-            actions: [ // <-- ADDED ACTIONS
-              if (!_isGuest && _loggedInUserId != null)
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  tooltip: 'Logout',
-                  onPressed: _handleLogout,
-                ),
-              const SizedBox(width: 8), // Padding for the action button
-            ],
-            // Flexible space holds the search bar below the title/actions
-            flexibleSpace: FlexibleSpaceBar(
-              background: Padding(
-                // Adjust top padding to place search below title/actions area
-                padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.of(context).padding.top + 10, bottom: 10),
-                child: _searchSection(),
-              ),
-            ),
-            // Adjust height to fit title/actions + search bar + padding
-            expandedHeight: kToolbarHeight + 80.0, // kToolbarHeight is standard AppBar height
-          ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
+          child: _searchSection(), 
+        ),
 
+        // --- Scrollable Content Area ---
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _fetchDoctors, 
+            child: CustomScrollView(
+              slivers: <Widget>[
           // --- Predefined Filters (Sliver) ---
-          SliverToBoxAdapter(
-            child: _buildPredefinedFilters(),
-          ),
+                SliverToBoxAdapter(
+                  child: _buildPredefinedFilters(),
+                ),
 
-          // --- Header for Doctor List (Sliver) ---
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 15, left: 16, right: 16, bottom: 10),
-              child: Text( 
-                _getDoctorListTitle(),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+                // --- Header for the Main Doctor List ---
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 15, left: 16, right: 16, bottom: 10),
+                    child: Text(
+                      _getDoctorListTitle(), // Dynamic title based on filters
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+
+                // --- Main Doctor List (or loading/error/empty state) ---
+                _buildSliverDoctorList(),
+
+                // --- Header for Favorite Doctors Section ---
+                // Show only if logged in and there are favorite doctors
+                if (!_isGuest && _favoriteDoctors.isNotEmpty)
+                   SliverToBoxAdapter(
+                     child: Padding(
+                       padding: const EdgeInsets.only(top: 25, left: 16, right: 16, bottom: 10),
+                       child: Text(
+                         'Your Favorite Doctors',
+                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                       ),
+                     ),
+                   ),
+
+                // --- Favorite Doctor List (or empty state for favorites) ---
+                // Show only if logged in
+                if (!_isGuest)
+                   _buildSliverFavoriteDoctorList(),
+
+                // Add some padding at the very bottom of the scroll view
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ],
             ),
           ),
-
-          // --- Main Doctor List (SliverList) ---
-          _buildSliverDoctorList(),
-
-          // --- Header for Favorites (Sliver) ---
-          if (!_isGuest && _favoriteDoctors.isNotEmpty)
-             SliverToBoxAdapter(
-               child: Padding(
-                 padding: const EdgeInsets.only(top: 25, left: 16, right: 16, bottom: 10),
-                 child: Text(
-                   'Your Favorite Doctors',
-                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                 ),
-               ),
-             ),
-
-          // --- Favorite Doctor List (SliverList) ---
-          if (!_isGuest)
-             _buildSliverFavoriteDoctorList(),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+  // Helper to get the title for the main doctor list based on filter state
   String _getDoctorListTitle() {
-     if (_searchController.text.isNotEmpty || _selectedSpecialtyFilter != null || (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All')) {
-       return 'Filtered Doctors';
-     }
-     return 'Available Doctors';
+     bool isAnyFilterActive = _searchController.text.isNotEmpty ||
+                              _selectedSpecialtyFilter != null ||
+                              (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All');
+     return isAnyFilterActive ? 'Filtered Doctors' : 'Available Doctors';
   }
 
   // --- Build Main Doctor List as Sliver ---
   Widget _buildSliverDoctorList() {
+    // Handle loading state
     if (_isLoadingDoctors) {
-      return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+      // Show a loading indicator centered within the remaining space
+      return const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
+    // Handle error state
     if (_errorLoadingDoctors != null) {
-      return SliverFillRemaining(child: _buildErrorWidget());
+      // Show error message and retry button centered within the remaining space
+      return SliverFillRemaining(
+        child: _buildErrorWidget(),
+      );
     }
+    // Handle empty list state (after filtering or initially)
     if (_filteredDoctors.isEmpty) {
-      return SliverToBoxAdapter(child: _buildEmptyListWidget()); 
+      // Show an empty list message
+      return SliverToBoxAdapter( // Use SliverToBoxAdapter for simple content
+        child: _buildEmptyListWidget(),
+      );
     }
+    // Build the actual list using SliverList
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) => DoctorListItem(doctor: _filteredDoctors[index], isFavoriteView: false),
-        childCount: _filteredDoctors.length,
+        (context, index) {
+          // Build each doctor item using the DoctorListItem widget
+          return DoctorListItem(doctor: _filteredDoctors[index], isFavoriteView: false);
+        },
+        childCount: _filteredDoctors.length, // Number of items in the filtered list
       ),
     );
   }
 
    // --- Build Favorite Doctor List as Sliver ---
   Widget _buildSliverFavoriteDoctorList() {
+    // Loading/Error is handled by the main list's state for simplicity
     if (_isLoadingDoctors) {
+      // Don't show anything for favorites while the main list is loading
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
+    // Handle empty favorites list state (only if logged in)
     if (_favoriteDoctors.isEmpty && !_isGuest) {
-       return SliverToBoxAdapter(child: _buildEmptyFavoritesWidget()); 
+       // Show a message indicating no favorites have been added
+       return SliverToBoxAdapter(
+         child: _buildEmptyFavoritesWidget(),
+       );
     }
+    // Build the list of favorite doctors using SliverList
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) => DoctorListItem(doctor: _favoriteDoctors[index], isFavoriteView: true),
-        childCount: _favoriteDoctors.length,
+        (context, index) {
+          // Build each favorite doctor item, potentially styled differently
+          return DoctorListItem(doctor: _favoriteDoctors[index], isFavoriteView: true);
+        },
+        childCount: _favoriteDoctors.length, // Number of favorite doctors
       ),
     );
   }
 
   // --- Helper Widgets for List States ---
+  // Builds the widget shown when there's an error fetching doctors
   Widget _buildErrorWidget() {
     return Center(
       child: Padding(
@@ -415,7 +445,7 @@ class _HomeState extends State<Home> {
             Icon(Icons.error_outline, color: Colors.red[700], size: 50),
             const SizedBox(height: 10),
             Text(
-              _errorLoadingDoctors!,
+              _errorLoadingDoctors!, // Display the error message
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.red[700], fontSize: 16),
             ),
@@ -423,7 +453,7 @@ class _HomeState extends State<Home> {
             ElevatedButton.icon(
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              onPressed: _fetchDoctors,
+              onPressed: _fetchDoctors, // Allow user to retry fetching
             ),
           ],
         ),
@@ -431,12 +461,16 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // Builds the widget shown when the main doctor list is empty (either initially or after filtering)
   Widget _buildEmptyListWidget() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
         child: Text(
-          _doctors.isEmpty ? 'No doctors found at the moment.' : 'No doctors match your current filters.',
+          // Provide context-specific message
+          _doctors.isEmpty
+              ? 'No doctors found at the moment.' // If the original list was empty
+              : 'No doctors match your current filters.', // If filters resulted in empty list
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Colors.grey),
         ),
@@ -444,6 +478,7 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // Builds the widget shown when the favorite doctors list is empty
    Widget _buildEmptyFavoritesWidget() {
      return Padding(
        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
@@ -457,16 +492,15 @@ class _HomeState extends State<Home> {
      );
    }
 
-  // Predefined Filter Buttons
+  // Builds the horizontal list of predefined filter chips
   Widget _buildPredefinedFilters() {
-
      return Container(
-      height: 50, 
+      height: 50, // Fixed height for the filter bar
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
       child: ListView.separated(
-        scrollDirection: Axis.horizontal,
+        scrollDirection: Axis.horizontal, // Make it scroll horizontally
         itemCount: _predefinedFilters.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        separatorBuilder: (context, index) => const SizedBox(width: 8), // Space between chips
         itemBuilder: (context, index) {
           final filter = _predefinedFilters[index];
           final isSelected = filter == _selectedPredefinedFilter;
@@ -496,92 +530,130 @@ class _HomeState extends State<Home> {
 
   // --- Search Section
   Widget _searchSection() {
-     return Padding(
-       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-       child: TextField(
+     // Use padding here if needed, or rely on padding applied in _homeScreenBody
+    
+     return TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-          hintText: 'Search Doctor or Specialty...',
-          hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+          filled: true, // Use a fill color
+          fillColor: Colors.white, // Background color of the field
+          contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0), // Inner padding
+          hintText: 'Search Doctor or Specialty...', // Placeholder text
+          hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14), // Style for hint text
+          // Search icon at the beginning
           prefixIcon: const Padding(
             padding: EdgeInsets.only(left: 15, right: 10),
             child: Icon(Icons.search, size: 22),
           ),
+          // Icons at the end (clear button and filter dropdown)
           suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, // Take only needed horizontal space
             children: [
+              // Show clear button only if there is text in the search field
               if (_searchController.text.isNotEmpty)
                 IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
                   tooltip: 'Clear Search',
-                  onPressed: () { _searchController.clear(); },
+                  onPressed: () {
+                    _searchController.clear(); // Clear text, listener will trigger filter update
+                  },
                 ),
+              // Optional visual divider
               const SizedBox(
-                 height: 30,
+                 height: 30, // Adjust height to match input field
                  child: VerticalDivider(color: Colors.grey, indent: 5, endIndent: 5, thickness: 0.7),
               ),
+              // Dropdown menu button for specialty filtering
               PopupMenuButton<String?>(
                 icon: Icon(
                   Icons.filter_list,
                   size: 24,
+                  // Change icon color if a specialty filter is active
                   color: _selectedSpecialtyFilter == null ? Colors.grey : Theme.of(context).primaryColor,
                 ),
                 tooltip: 'Filter by Specialty',
-                onSelected: _onSpecialtyFilterSelected,
+                onSelected: _onSpecialtyFilterSelected, // Callback when an item is selected
                 itemBuilder: (BuildContext context) {
+                  // Build the dropdown menu items
                   Set<String> specialties = _getUniqueSpecialties();
                   List<PopupMenuEntry<String?>> menuItems = [];
+
+                  // Add "All Specialties" option
                   menuItems.add(
                     PopupMenuItem<String?>(
-                      value: null,
-                      child: Text('All Specialties', style: TextStyle(fontWeight: _selectedSpecialtyFilter == null ? FontWeight.bold : FontWeight.normal)),
+                      value: null, // Use null to represent 'All'
+                      child: Text(
+                        'All Specialties',
+                        style: TextStyle(fontWeight: _selectedSpecialtyFilter == null ? FontWeight.bold : FontWeight.normal),
+                      ),
                     ),
                   );
+
+                  // Add divider if there are specific specialties
                   if (specialties.isNotEmpty) {
                      menuItems.add(const PopupMenuDivider());
                   }
-                  // Create sorted list for consistent order
+
+                  // Create a sorted list of specialties for consistent order
                   var sortedSpecialties = specialties.toList()..sort();
+                  // Add menu item for each unique specialty
                   for (String specialty in sortedSpecialties) {
                     menuItems.add(
                       PopupMenuItem<String?>(
                         value: specialty,
-                        child: Text(specialty, style: TextStyle(fontWeight: _selectedSpecialtyFilter == specialty ? FontWeight.bold : FontWeight.normal)),
+                        child: Text(
+                          specialty,
+                          style: TextStyle(fontWeight: _selectedSpecialtyFilter == specialty ? FontWeight.bold : FontWeight.normal),
+                        ),
                       ),
                     );
                   }
                   return menuItems;
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8), // Padding after the filter icon
             ],
           ),
+          // Define the border appearance
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(30), // Rounded corners
+            borderSide: BorderSide(color: Colors.grey.shade300), // Default border
           ),
-           enabledBorder: OutlineInputBorder(
+           enabledBorder: OutlineInputBorder( // Border when the field is enabled but not focused
              borderRadius: BorderRadius.circular(30),
              borderSide: BorderSide(color: Colors.grey.shade300),
            ),
-           focusedBorder: OutlineInputBorder(
+           focusedBorder: OutlineInputBorder( // Border when the field is focused
              borderRadius: BorderRadius.circular(30),
-             borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+             borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5), // Highlight border
            ),
         ),
-      ),
-    );
+      );
   }
 
-  // --- Main Build Method
+  // --- Main Build Method for the entire screen ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
+      
+      appBar: AppBar(
+        title: const Text('Doctor Appointment'),
+        centerTitle: true,
+        elevation: 1, // Subtle shadow below AppBar
+        actions: [
+          // Show logout button only if user is logged in
+          if (!_isGuest && _loggedInUserId != null)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: _handleLogout, // Trigger logout process
+            ),
+          const SizedBox(width: 8), // Padding for the action button
+        ],
+      ),
+     
       body: _buildBody(),
+      // Bottom navigation bar
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
