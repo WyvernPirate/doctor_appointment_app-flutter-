@@ -477,8 +477,9 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
        Navigator.pop(context); // Close the sheet
     }
 
-    // --- TODO: Implement Actual Booking Logic Here ---
-    //   // Show success message
+    // TODO: Implement Actual Booking Logic Here
+    
+        // Show success message
          if (!mounted) return;
          ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(
