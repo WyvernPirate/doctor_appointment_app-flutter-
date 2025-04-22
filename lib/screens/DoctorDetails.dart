@@ -134,8 +134,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Allows sheet to take more height if needed
-      shape: const RoundedRectangleBorder( // Optional: Rounded top corners
+      isScrollControlled: true, 
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
       builder: (BuildContext context) {
@@ -154,7 +154,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         title: Text(_isLoading || _doctor == null ? 'Details' : _doctor!.name),
         elevation: 1,
         actions: [
-          // Optional: Favorite toggle button
+          // TODO: Favorite toggle button
           if (_doctor != null)
             IconButton(
               icon: Icon(
@@ -174,15 +174,15 @@ class _DoctorDetailsState extends State<DoctorDetails> {
       body: _buildBodyContent(),
 
       // --- Floating Action Button for Booking ---
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // Position
-      floatingActionButton: _isLoading || _doctor == null // Show only when loaded
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _isLoading || _doctor == null 
           ? null // Hide if loading or error
-          : FloatingActionButton.extended( // Use the correct widget name
-              onPressed: _handleBooking, // Trigger the bottom sheet
+          : FloatingActionButton.extended( 
+              onPressed: _handleBooking, 
               label: const Text('Book Appointment'),
               icon: const Icon(Icons.calendar_today_outlined),
-              backgroundColor: Theme.of(context).primaryColor, // Use theme color
-              // foregroundColor: Colors.white, // Handled by theme usually
+              backgroundColor: Theme.of(context).primaryColor, 
+              foregroundColor: Colors.white, 
             ),
     );
   }
