@@ -1,5 +1,5 @@
 // lib/screens/Appointments.dart
-import 'dart:convert'; // For jsonEncode/jsonDecode
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,31 +16,30 @@ class Appointments extends StatefulWidget {
 
 class _AppointmentsState extends State<Appointments> {
   List<Map<String, dynamic>> _appointments = [];
-  bool _isLoading = true; // Start loading initially
+  bool _isLoading = true;
   String? _error;
   String? _loggedInUserId;
+  // Set to keep track of which appointment is currently being cancelled
+  final Set<String> _cancellingAppointmentIds = {};
 
-  // Key for storing appointments in SharedPreferences
   static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   @override
   void initState() {
     super.initState();
-    _initializeAppointments(); // Call combined init function
+    _initializeAppointments();
   }
 
-  // Combined initialization: Load local first, then fetch from network
   Future<void> _initializeAppointments() async {
-    await _loadUserId(); // Ensure user ID is loaded
+    await _loadUserId();
     if (_loggedInUserId != null) {
-      await _loadLocalAppointments(); // Load cached data first
-      await _loadAppointmentsFromFirestore(); // Then fetch fresh data
+      await _loadLocalAppointments();
+      await _loadAppointmentsFromFirestore();
     } else {
-      // Handle case where user ID couldn't be loaded (e.g., show login prompt)
       if (mounted) {
          setState(() {
            _error = "Please log in to view appointments.";
-           _isLoading = false; // Stop loading as we can't proceed
+           _isLoading = false;
          });
       }
     }
@@ -57,61 +56,49 @@ class _AppointmentsState extends State<Appointments> {
   // --- Load Appointments from Local Storage ---
   Future<void> _loadLocalAppointments() async {
     if (!mounted || _loggedInUserId == null) return;
-
-    // Show loading indicator while loading local data (optional, usually fast)
-    // setState(() { _isLoading = true; });
-
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? appointmentsJson = prefs.getString(_prefsKeyAppointments + _loggedInUserId!); // User-specific key
+      final String? appointmentsJson = prefs.getString(_prefsKeyAppointments + _loggedInUserId!);
 
       if (appointmentsJson != null && appointmentsJson.isNotEmpty) {
         final List<dynamic> decodedList = jsonDecode(appointmentsJson);
         final List<Map<String, dynamic>> localAppointments = decodedList.map((item) {
-          // Ensure item is a Map<String, dynamic>
           if (item is Map) {
              Map<String, dynamic> appointmentMap = Map<String, dynamic>.from(item);
-             // Convert timestamp (milliseconds) back to DateTime for display consistency
              if (appointmentMap['appointmentTimeMillis'] is int) {
                 appointmentMap['appointmentTime'] = DateTime.fromMillisecondsSinceEpoch(appointmentMap['appointmentTimeMillis']);
              }
-             // Remove the millis version if you don't need it
-             // appointmentMap.remove('appointmentTimeMillis');
              return appointmentMap;
           }
-          return <String, dynamic>{}; // Return empty map if item is not a map
-        }).where((map) => map.isNotEmpty).toList(); // Filter out any empty maps
+          return <String, dynamic>{};
+        }).where((map) => map.isNotEmpty).toList();
 
         if (mounted) {
           setState(() {
             _appointments = localAppointments;
-            // Keep isLoading true until Firestore fetch completes, or set false here
-            // _isLoading = false; // Show cached data immediately
-            _error = null; // Clear previous errors if local data loaded
+            _error = null;
           });
         }
       }
     } catch (e) {
       print("Error loading local appointments: $e");
-      // Don't necessarily show error here, let Firestore fetch handle it
     }
-    // Don't set isLoading to false here if you want the indicator until Firestore loads
   }
 
-  // --- Fetch Appointments from Firestore ---
   Future<void> _loadAppointmentsFromFirestore() async {
     if (!mounted || _loggedInUserId == null) return;
-
-    // Ensure loading indicator is shown while fetching from network
     if (!_isLoading) {
        setState(() { _isLoading = true; });
     }
-    setState(() { _error = null; }); // Clear previous errors
+    setState(() { _error = null; });
 
     try {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('appointments')
           .where('userId', isEqualTo: _loggedInUserId)
+          // Filter out cancelled appointments from the main view
+          .where('status', isNotEqualTo: 'Cancelled')
+          .orderBy('status') // Optional: group by status first?
           .orderBy('appointmentTime', descending: false)
           .get();
 
@@ -119,7 +106,6 @@ class _AppointmentsState extends State<Appointments> {
         final List<Map<String, dynamic>> firestoreAppointments = querySnapshot.docs.map((doc) {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
           data['id'] = doc.id;
-          // Ensure appointmentTime is DateTime for consistent handling in UI
           if (data['appointmentTime'] is Timestamp) {
              data['appointmentTime'] = (data['appointmentTime'] as Timestamp).toDate();
           }
@@ -127,9 +113,9 @@ class _AppointmentsState extends State<Appointments> {
         }).toList();
 
         setState(() {
-          _appointments = firestoreAppointments; // Update with fresh data
-          _isLoading = false; // Stop loading
-          _error = null; // Clear error on success
+          _appointments = firestoreAppointments;
+          _isLoading = false;
+          _error = null;
         });
 
         // --- Save fetched data locally ---
@@ -138,16 +124,13 @@ class _AppointmentsState extends State<Appointments> {
     } catch (e) {
       print("Error fetching appointments from Firestore: $e");
       if (mounted) {
-        // Only show error if local loading also failed or wasn't possible
         if (_appointments.isEmpty) {
           setState(() {
             _error = "Failed to load appointments.";
-            _isLoading = false; // Stop loading on error
+            _isLoading = false;
           });
         } else {
-          // If local data exists, just stop loading but don't show error overlaying cached data
           setState(() { _isLoading = false; });
-          // Optionally show a subtle snackbar error
           ScaffoldMessenger.of(context).showSnackBar(
              const SnackBar(content: Text('Could not refresh appointments.'), duration: Duration(seconds: 2))
           );
@@ -159,30 +142,104 @@ class _AppointmentsState extends State<Appointments> {
   // --- Save Appointments to Local Storage ---
   Future<void> _saveAppointmentsLocally(List<Map<String, dynamic>> appointments) async {
      if (!mounted || _loggedInUserId == null) return;
-
      try {
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        // Create a list suitable for JSON encoding (convert DateTime/Timestamp)
         List<Map<String, dynamic>> encodableList = appointments.map((appointment) {
            Map<String, dynamic> encodableMap = Map.from(appointment);
-           // Convert DateTime or Timestamp to milliseconds since epoch
            if (encodableMap['appointmentTime'] is DateTime) {
               encodableMap['appointmentTimeMillis'] = (encodableMap['appointmentTime'] as DateTime).millisecondsSinceEpoch;
            } else if (encodableMap['appointmentTime'] is Timestamp) {
               encodableMap['appointmentTimeMillis'] = (encodableMap['appointmentTime'] as Timestamp).millisecondsSinceEpoch;
            }
-           // Remove the original DateTime/Timestamp object before encoding
            encodableMap.remove('appointmentTime');
            return encodableMap;
         }).toList();
-
         String appointmentsJson = jsonEncode(encodableList);
-        await prefs.setString(_prefsKeyAppointments + _loggedInUserId!, appointmentsJson); // User-specific key
+        await prefs.setString(_prefsKeyAppointments + _loggedInUserId!, appointmentsJson);
         print("Appointments saved locally.");
      } catch (e) {
         print("Error saving appointments locally: $e");
-        // Handle saving error if necessary (e.g., show a message)
      }
+  }
+
+  // --- Handle Appointment Cancellation ---
+  Future<void> _handleCancelAppointment(Map<String, dynamic> appointment) async {
+    final String? appointmentId = appointment['id'];
+    if (appointmentId == null || !mounted || _cancellingAppointmentIds.contains(appointmentId)) {
+      return; // Prevent double cancellation or if ID is missing
+    }
+
+    // Show Confirmation Dialog
+    bool? confirmCancel = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Cancel Appointment?'),
+          content: const Text('Are you sure you want to cancel this appointment?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('No'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Yes, Cancel'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Proceed if user confirmed
+    if (confirmCancel == true) {
+      if (!mounted) return;
+      setState(() {
+        _cancellingAppointmentIds.add(appointmentId); // Mark as cancelling
+      });
+
+      try {
+        // Update Firestore status
+        await FirebaseFirestore.instance
+            .collection('appointments')
+            .doc(appointmentId)
+            .update({'status': 'Cancelled'});
+
+        // Update local state and cache
+        if (mounted) {
+          setState(() {
+            // Remove the appointment from the local list
+            _appointments.removeWhere((appt) => appt['id'] == appointmentId);
+          });
+          // Update the local cache without the cancelled appointment
+          await _saveAppointmentsLocally(_appointments);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Appointment cancelled successfully.'),
+              backgroundColor: Colors.orange, // Use orange/yellow for cancellation confirmation
+            ),
+          );
+        }
+      } catch (e) {
+        print("Error cancelling appointment: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to cancel appointment: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        // Always remove from cancelling set, regardless of success/failure
+        if (mounted) {
+          setState(() {
+            _cancellingAppointmentIds.remove(appointmentId);
+          });
+        }
+      }
+    }
   }
 
 
@@ -192,23 +249,27 @@ class _AppointmentsState extends State<Appointments> {
     String specialty = appointment['doctorSpecialty'] ?? 'N/A';
     String status = appointment['status'] ?? 'Unknown';
     String imageUrl = appointment['doctorImageUrl'] ?? '';
+    String? appointmentId = appointment['id']; // Get the ID
+    bool isCurrentlyCancelling = _cancellingAppointmentIds.contains(appointmentId); // Check if cancelling
 
-    // Format the DateTime (loaded from local or converted from Firestore)
     String dateStr = 'N/A';
     String timeStr = 'N/A';
-    // Check if 'appointmentTime' exists and is a DateTime object
+    DateTime? appointmentDateTime; // Store DateTime for comparison
+
     if (appointment['appointmentTime'] is DateTime) {
-      DateTime dt = appointment['appointmentTime'] as DateTime;
-      dateStr = DateFormat.yMMMd().format(dt); // e.g., Apr 23, 2025
-      timeStr = DateFormat.jm().format(dt); // e.g., 10:30 AM
-    }
-    // Fallback check for milliseconds if DateTime conversion failed during load
-    else if (appointment['appointmentTimeMillis'] is int) {
-       DateTime dt = DateTime.fromMillisecondsSinceEpoch(appointment['appointmentTimeMillis']);
-       dateStr = DateFormat.yMMMd().format(dt);
-       timeStr = DateFormat.jm().format(dt);
+      appointmentDateTime = appointment['appointmentTime'] as DateTime;
+      dateStr = DateFormat.yMMMd().format(appointmentDateTime);
+      timeStr = DateFormat.jm().format(appointmentDateTime);
+    } else if (appointment['appointmentTimeMillis'] is int) {
+       appointmentDateTime = DateTime.fromMillisecondsSinceEpoch(appointment['appointmentTimeMillis']);
+       dateStr = DateFormat.yMMMd().format(appointmentDateTime);
+       timeStr = DateFormat.jm().format(appointmentDateTime);
     }
 
+    // Determine if cancellation should be possible
+    bool canCancel = status.toLowerCase() == 'scheduled' &&
+                     appointmentDateTime != null &&
+                     appointmentDateTime.isAfter(DateTime.now()); // Can only cancel future scheduled appointments
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -243,7 +304,7 @@ class _AppointmentsState extends State<Appointments> {
                   const SizedBox(height: 4),
                   Text(specialty, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
                   const SizedBox(height: 8),
-                  Row( // Date and Time
+                  Row( 
                     children: [
                       Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade600),
                       const SizedBox(width: 4),
@@ -252,22 +313,31 @@ class _AppointmentsState extends State<Appointments> {
                       Icon(Icons.access_time_outlined, size: 14, color: Colors.grey.shade600),
                       const SizedBox(width: 4),
                       Text(timeStr, style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                    ], ),
+                  const SizedBox(height: 10),
+                  // Status Badge and Cancel Button Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align badge left, button right
+                    children: [
+                      _buildStatusBadge(status), // Status badge
+                      // Show Cancel Button conditionally
+                      if (canCancel)
+                        isCurrentlyCancelling
+                          ? const SizedBox( // Show loading indicator instead of button
+                              width: 24, height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2.5)
+                            )
+                          : TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red.shade700,
+                                padding: EdgeInsets.zero, // Minimal padding
+                                visualDensity: VisualDensity.compact, // Compact size
+                              ),
+                              onPressed: () => _handleCancelAppointment(appointment), // Call handler
+                              child: const Text('Cancel'),
+                            ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  // Status Badge
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _buildStatusBadge(status),
-                  ),
-                  // Optional: Add Cancel Button
-                  // Align(
-                  //   alignment: Alignment.centerRight,
-                  //   child: TextButton(
-                  //      onPressed: status == 'Scheduled' ? () { /* TODO: Handle cancellation */ } : null,
-                  //      child: Text('Cancel', style: TextStyle(color: status == 'Scheduled' ? Colors.red : Colors.grey)),
-                  //   ),
-                  // )
                 ],
               ),
             ),
@@ -290,10 +360,10 @@ class _AppointmentsState extends State<Appointments> {
 
   // Helper to build the list view or status messages
   Widget _buildAppointmentList() {
-    if (_isLoading) {
+    // ... (loading, error, empty list logic remains the same) ...
+     if (_isLoading && _appointments.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    // Show error ONLY if appointments list is empty
     if (_error != null && _appointments.isEmpty) {
       return Center(
         child: Padding(
@@ -313,7 +383,6 @@ class _AppointmentsState extends State<Appointments> {
         ),
       );
     }
-    // Show empty message if not loading, no error, and list is empty
     if (!_isLoading && _error == null && _appointments.isEmpty) {
       return RefreshIndicator( // Allow refresh even when empty
          onRefresh: _loadAppointmentsFromFirestore,
@@ -328,9 +397,8 @@ class _AppointmentsState extends State<Appointments> {
          ),
        );
     }
-    // Build the list using cached or fresh data
     return RefreshIndicator(
-      onRefresh: _loadAppointmentsFromFirestore, // Reload data on pull
+      onRefresh: _loadAppointmentsFromFirestore,
       child: ListView.builder(
         itemCount: _appointments.length,
         itemBuilder: (context, index) {
@@ -346,20 +414,11 @@ class _AppointmentsState extends State<Appointments> {
     // ... (code remains the same) ...
      Color badgeColor;
     switch (status.toLowerCase()) {
-      case 'scheduled':
-        badgeColor = Colors.blue;
-        break;
-      case 'completed':
-         badgeColor = Colors.green;
-         break;
-      case 'pending':
-        badgeColor = Colors.orange;
-        break;
-      case 'cancelled':
-        badgeColor = Colors.red;
-        break;
-      default:
-        badgeColor = Colors.grey;
+      case 'scheduled': badgeColor = Colors.blue; break;
+      case 'completed': badgeColor = Colors.green; break;
+      case 'pending': badgeColor = Colors.orange; break;
+      case 'cancelled': badgeColor = Colors.red; break;
+      default: badgeColor = Colors.grey;
     }
 
     return Container(
