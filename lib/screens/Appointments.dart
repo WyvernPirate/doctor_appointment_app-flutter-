@@ -1,6 +1,5 @@
 // lib/screens/Appointments.dart
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,7 +97,7 @@ class _AppointmentsState extends State<Appointments> {
           .where('userId', isEqualTo: _loggedInUserId)
           // Filter out cancelled appointments from the main view
           .where('status', isNotEqualTo: 'Cancelled')
-          .orderBy('status') // Optional: group by status first?
+          .orderBy('status') 
           .orderBy('appointmentTime', descending: false)
           .get();
 
@@ -195,7 +194,7 @@ class _AppointmentsState extends State<Appointments> {
     if (confirmCancel == true) {
       if (!mounted) return;
       setState(() {
-        _cancellingAppointmentIds.add(appointmentId); // Mark as cancelling
+        _cancellingAppointmentIds.add(appointmentId); 
       });
 
       try {
@@ -217,7 +216,7 @@ class _AppointmentsState extends State<Appointments> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Appointment cancelled successfully.'),
-              backgroundColor: Colors.orange, // Use orange/yellow for cancellation confirmation
+              backgroundColor: Colors.orange,
             ),
           );
         }
@@ -232,7 +231,6 @@ class _AppointmentsState extends State<Appointments> {
           );
         }
       } finally {
-        // Always remove from cancelling set, regardless of success/failure
         if (mounted) {
           setState(() {
             _cancellingAppointmentIds.remove(appointmentId);
@@ -242,7 +240,6 @@ class _AppointmentsState extends State<Appointments> {
     }
   }
 
-
   // Helper function to build an appointment card
   Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
     String doctorName = appointment['doctorName'] ?? 'N/A';
@@ -250,11 +247,11 @@ class _AppointmentsState extends State<Appointments> {
     String status = appointment['status'] ?? 'Unknown';
     String imageUrl = appointment['doctorImageUrl'] ?? '';
     String? appointmentId = appointment['id']; // Get the ID
-    bool isCurrentlyCancelling = _cancellingAppointmentIds.contains(appointmentId); // Check if cancelling
+    bool isCurrentlyCancelling = _cancellingAppointmentIds.contains(appointmentId); 
 
     String dateStr = 'N/A';
     String timeStr = 'N/A';
-    DateTime? appointmentDateTime; // Store DateTime for comparison
+    DateTime? appointmentDateTime; 
 
     if (appointment['appointmentTime'] is DateTime) {
       appointmentDateTime = appointment['appointmentTime'] as DateTime;
@@ -317,23 +314,23 @@ class _AppointmentsState extends State<Appointments> {
                   const SizedBox(height: 10),
                   // Status Badge and Cancel Button Row
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align badge left, button right
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, 
                     children: [
-                      _buildStatusBadge(status), // Status badge
+                      _buildStatusBadge(status), 
                       // Show Cancel Button conditionally
                       if (canCancel)
                         isCurrentlyCancelling
-                          ? const SizedBox( // Show loading indicator instead of button
+                          ? const SizedBox( 
                               width: 24, height: 24,
                               child: CircularProgressIndicator(strokeWidth: 2.5)
                             )
                           : TextButton(
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red.shade700,
-                                padding: EdgeInsets.zero, // Minimal padding
-                                visualDensity: VisualDensity.compact, // Compact size
+                                padding: EdgeInsets.zero, 
+                                visualDensity: VisualDensity.compact, 
                               ),
-                              onPressed: () => _handleCancelAppointment(appointment), // Call handler
+                              onPressed: () => _handleCancelAppointment(appointment), 
                               child: const Text('Cancel'),
                             ),
                     ],
@@ -360,7 +357,6 @@ class _AppointmentsState extends State<Appointments> {
 
   // Helper to build the list view or status messages
   Widget _buildAppointmentList() {
-    // ... (loading, error, empty list logic remains the same) ...
      if (_isLoading && _appointments.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -368,7 +364,7 @@ class _AppointmentsState extends State<Appointments> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Column( // Added Column for retry button
+          child: Column( 
              mainAxisAlignment: MainAxisAlignment.center,
              children: [
                Text(_error!, style: TextStyle(color: Colors.red.shade700, fontSize: 16), textAlign: TextAlign.center),
@@ -376,7 +372,7 @@ class _AppointmentsState extends State<Appointments> {
                ElevatedButton.icon(
                  icon: const Icon(Icons.refresh),
                  label: const Text('Retry'),
-                 onPressed: _loadAppointmentsFromFirestore, // Retry fetching
+                 onPressed: _loadAppointmentsFromFirestore, 
                )
              ],
            ),
@@ -386,7 +382,7 @@ class _AppointmentsState extends State<Appointments> {
     if (!_isLoading && _error == null && _appointments.isEmpty) {
       return RefreshIndicator( // Allow refresh even when empty
          onRefresh: _loadAppointmentsFromFirestore,
-         child: LayoutBuilder( // Use LayoutBuilder to make message scrollable if needed
+         child: LayoutBuilder(
            builder: (context, constraints) => SingleChildScrollView(
              physics: const AlwaysScrollableScrollPhysics(),
              child: ConstrainedBox(
@@ -411,7 +407,6 @@ class _AppointmentsState extends State<Appointments> {
 
   // Helper function to build a status badge
   Widget _buildStatusBadge(String status) {
-    // ... (code remains the same) ...
      Color badgeColor;
     switch (status.toLowerCase()) {
       case 'scheduled': badgeColor = Colors.blue; break;
@@ -432,7 +427,7 @@ class _AppointmentsState extends State<Appointments> {
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          fontSize: 12, // Slightly smaller badge text
+          fontSize: 12, 
         ),
       ),
     );
