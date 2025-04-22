@@ -499,7 +499,6 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
  
   }
 
-
   @override
   Widget build(BuildContext context) {
     // Define date/time constraints
@@ -581,7 +580,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                 ),
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.time, 
-                  initialDateTime: _selectedTime ?? DateTime( // Fallback just in case
+                  initialDateTime: _selectedTime ?? DateTime(
                         _selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0
                       ), 
                   minimumDate: minTime, 
