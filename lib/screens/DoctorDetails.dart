@@ -1,14 +1,13 @@
-// lib/screens/DoctorDetails.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // If showing map
-import 'package:url_launcher/url_launcher.dart'; // For launching calls/maps
+import 'package:google_maps_flutter/google_maps_flutter.dart'; 
+import 'package:url_launcher/url_launcher.dart'; 
 import '/models/doctor.dart';
 import 'package:flutter/cupertino.dart';
 
 // --- Main Details Screen Widget ---
 class DoctorDetails extends StatefulWidget {
-  final String doctorId; // ID of the doctor to display
+  final String doctorId; 
 
   const DoctorDetails({
     super.key,
@@ -20,11 +19,11 @@ class DoctorDetails extends StatefulWidget {
 }
 
 class _DoctorDetailsState extends State<DoctorDetails> {
-  Doctor? _doctor; // Holds the fetched doctor data
+  Doctor? _doctor; 
   bool _isLoading = true;
   String? _error;
 
-  // --- Map Controller (Optional) ---
+  // --- Map Controller  ---
   GoogleMapController? _mapController;
 
   @override
@@ -72,7 +71,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   // --- Helper to launch phone dialer ---
   Future<void> _launchCaller(String? phoneNumber) async {
     if (phoneNumber == null || phoneNumber.isEmpty) {
-      if (!mounted) return; // Check mounted before showing SnackBar
+      if (!mounted) return; 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Phone number not available.')),
       );
@@ -113,7 +112,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     // Universal Maps URL works across platforms
     final Uri mapUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
 
-    // Platform specific URLs (optional, might give better integration)
+    // Platform specific URLs
     final Uri appleMapUri = Uri.parse('maps://?q=$query');
     final Uri googleMapUri = Uri.parse('geo:$query');
 
@@ -128,9 +127,9 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     }
   }
 
-  // --- Handle Booking Action: Show Bottom Sheet ---
+  // --- Handle Booking Action ---
   void _handleBooking() {
-    if (_doctor == null) return; // Don't show if doctor data isn't loaded
+    if (_doctor == null) return; 
 
     showModalBottomSheet(
       context: context,
@@ -139,7 +138,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
       builder: (BuildContext context) {
-        // Return the stateful widget that contains the sheet content
         return _BookingBottomSheetContent(doctor: _doctor!);
       },
     );
@@ -189,7 +187,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
   // --- Body Content Builder ---
   Widget _buildBodyContent() {
-    // Handle Loading State
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -222,7 +219,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               child: _buildInfoSection(doctor),
             ),
             const SizedBox(height: 20),
-            // Optional Map Section
             if (doctor.location != null)
               _buildMapSection(doctor),
             // Optional About Section
@@ -445,9 +441,8 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
   // Helper to combine selected date and time into a single DateTime object
   DateTime? get _finalSelectedDateTime {
     if (_selectedDate == null || _selectedTime == null) {
-      return null; // Return null if either date or time is not selected
+      return null; 
     }
-    // Combine date part from _selectedDate and time part from _selectedTime
     return DateTime(
       _selectedDate!.year,
       _selectedDate!.month,
@@ -457,7 +452,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
     );
   }
 
-  // --- Placeholder for Actual Booking Logic ---
+  // --- Placeholder for Booking Logic ---
   Future<void> _confirmBooking() async {
     final bookingDateTime = _finalSelectedDateTime;
     if (bookingDateTime == null) {
@@ -471,7 +466,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
 
     // Close the bottom sheet first
     if (mounted) {
-       Navigator.pop(context); // Close the sheet
+       Navigator.pop(context); 
     }
 
     // TODO: Implement Actual Booking Logic Here
@@ -551,8 +546,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
               onDateChanged: (newDate) {
                 setState(() {
                   _selectedDate = newDate;
-                  // Update _selectedTime to keep the same time but on the new date
-                  // This ensures the time picker doesn't reset unexpectedly
+                 
                   if (_selectedTime != null) {
                      _selectedTime = DateTime(
                        newDate.year,
@@ -583,21 +577,20 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                   ),
                 ),
                 child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.time, // Show only time picker
-                  initialDateTime: _selectedTime, // Start at the selected/default time
-                  minimumDate: minTime, // Earliest selectable time (9:00 AM)
-                  maximumDate: maxTime, // Latest selectable time (4:00 PM)
-                  minuteInterval: 30, // Allow selection in 30-minute increments
-                  use24hFormat: false, // Use AM/PM format
+                  mode: CupertinoDatePickerMode.time, 
+                  initialDateTime: _selectedTime, 
+                  minimumDate: minTime, 
+                  maximumDate: maxTime, 
+                  minuteInterval: 30, 
+                  use24hFormat: false, 
                   onDateTimeChanged: (newTime) {
                     // Update the time state, keeping the selected date
                     setState(() {
                        _selectedTime = DateTime(
-                         _selectedDate!.year, // Keep year from selected date
-                         _selectedDate!.month, // Keep month from selected date
-                         _selectedDate!.day, // Keep day from selected date
-                         newTime.hour, // Update hour from picker
-                         newTime.minute, // Update minute from picker
+                         _selectedDate!.year, 
+                         _selectedDate!.month, 
+                         _selectedDate!.day,
+                         newTime.minute, 
                        );
                     });
                   },
@@ -607,7 +600,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
             const SizedBox(height: 25),
 
             // --- Confirmation Button ---
-            Center( // Center the button horizontally
+            Center( 
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.check_circle_outline),
                 label: const Text('Confirm Booking'),
@@ -618,10 +611,10 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                 // Button is enabled only if both date and time are selected
                 onPressed: (_selectedDate != null && _selectedTime != null)
                     ? _confirmBooking // Call booking logic
-                    : null, // Disable button otherwise
+                    : null, 
               ),
             ),
-            const SizedBox(height: 10), // Extra space at the bottom
+            const SizedBox(height: 10),
           ],
         ),
       ),
