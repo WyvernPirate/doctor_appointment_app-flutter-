@@ -1,9 +1,6 @@
-// lib/widgets/doctor_list_item.dart
 import 'package:flutter/material.dart';
 import '/screens/DoctorDetails.dart';
 import '/models/doctor.dart';
-// Import Doctor Details Screen if you have one
-// import '/screens/DoctorDetails.dart';
 
 class DoctorListItem extends StatelessWidget {
   final Doctor doctor;
@@ -23,9 +20,8 @@ class DoctorListItem extends StatelessWidget {
     final TextStyle separatorStyle = TextStyle(fontSize: 13, color: Colors.grey.shade500);
     final TextStyle ratingStyle = TextStyle(fontSize: 13, color: Colors.grey.shade600);
 
-    return InkWell( // Make item tappable
+    return InkWell( 
       onTap: () {
-        // --- MODIFIED NAVIGATION ---
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -33,11 +29,6 @@ class DoctorListItem extends StatelessWidget {
             builder: (context) => DoctorDetails(doctorId: doctor.id),
           ),
         );
-        // --- END MODIFICATION ---
-
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(content: Text('Tapped on ${doctor.name} (Details not implemented)'))
-        // );
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -58,13 +49,13 @@ class DoctorListItem extends StatelessWidget {
               : null,
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // Align items to the top
+          crossAxisAlignment: CrossAxisAlignment.start, 
           children: [
             // Doctor Image
             ClipRRect(
               borderRadius: BorderRadius.circular(8.0),
               child: Image.network(
-                doctor.imageUrl.isNotEmpty ? doctor.imageUrl : 'https://via.placeholder.com/80?text=No+Image', // Placeholder URL
+                doctor.imageUrl.isNotEmpty ? doctor.imageUrl : 'https://via.placeholder.com/80?text=No+Image', 
                 width: 80,
                 height: 80,
                 fit: BoxFit.cover,
@@ -94,10 +85,9 @@ class DoctorListItem extends StatelessWidget {
 
                   // 2. Specialty | Address Row
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start, // Align text tops
+                    crossAxisAlignment: CrossAxisAlignment.start, 
                     children: [
-                      // Specialty (limit lines/overflow)
-                      Flexible( // Allow specialty to shrink if needed
+                      Flexible( 
                         child: Text(
                           doctor.specialty,
                           style: detailStyle,
@@ -113,7 +103,7 @@ class DoctorListItem extends StatelessWidget {
                       // Address (
                       Expanded(
                         child: Text(
-                          doctor.address.isNotEmpty ? doctor.address : 'N/A', // Handle empty address
+                          doctor.address.isNotEmpty ? doctor.address : 'N/A',
                           style: detailStyle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -121,9 +111,9 @@ class DoctorListItem extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8), // Space before rating
+                  const SizedBox(height: 8), 
 
-                  // 3. Rating Row (Unchanged)
+                  // 3. Rating Row 
                   Row(
                     children: [
                       Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 18),
@@ -137,9 +127,7 @@ class DoctorListItem extends StatelessWidget {
                 ],
               ),
             ),
-            // --- End Doctor Info Column ---
 
-            // Optional: Favorite Icon (Unchanged)
             if (!isFavoriteView)
               IconButton(
                 padding: EdgeInsets.zero, 
