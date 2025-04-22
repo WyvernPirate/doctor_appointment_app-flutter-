@@ -426,13 +426,21 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
   @override
   void initState() {
     super.initState();
-    // Initialize with today's date and a default time (e.g., 9:00 AM)
     final now = DateTime.now();
-    _selectedDate = now;
+
+    // Calculate the first valid date for booking
+    final DateTime firstValidDate = (now.hour >= 16)
+        ? DateTime(now.year, now.month, now.day + 1) 
+        : DateTime(now.year, now.month, now.day);    
+
+    // Set _selectedDate to the first valid date initially
+    _selectedDate = firstValidDate;
+
+    // Initialize time, using the CORRECT initial date
     _selectedTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
       9, 
       0, 
     );
@@ -488,7 +496,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
     //   // Show error message
     //   showErrorSnackBar("Failed to book appointment: $e");
     // }
-    // --- End of TODO ---
+ 
   }
 
 
@@ -498,23 +506,20 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
     final now = DateTime.now();
     // Set first bookable date (e.g., today or tomorrow)
     final DateTime firstBookableDate = (now.hour >= 16) ? DateTime(now.year, now.month, now.day + 1) : DateTime(now.year, now.month, now.day);
-    // Set last bookable date (e.g., 90 days from now)
     final DateTime lastBookableDate = now.add(const Duration(days: 90));
-    // Define time boundaries for the picker (e.g., 9:00 AM to 4:00 PM)
     final DateTime minTime = DateTime(now.year, now.month, now.day, 9, 0);
     final DateTime maxTime = DateTime(now.year, now.month, now.day, 16, 0);
 
-    return SingleChildScrollView( // Ensures content scrolls if screen is small
+    return SingleChildScrollView(
       child: Padding(
-        // Add padding around the content and for the bottom safe area
         padding: EdgeInsets.only(
           left: 16.0,
           right: 16.0,
           top: 20.0,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20.0 // Adjust for keyboard if needed
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20.0 
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Sheet height adjusts to content
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- Header with Title and Close Button ---
@@ -528,7 +533,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                 IconButton(
                   icon: const Icon(Icons.close),
                   tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context), // Dismiss the sheet
+                  onPressed: () => Navigator.pop(context),
                 )
               ],
             ),
@@ -538,25 +543,24 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
             Text('Date', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             CalendarDatePicker(
-              initialDate: (_selectedDate != null && _selectedDate!.isAfter(firstBookableDate.subtract(const Duration(days:1))))
-                           ? _selectedDate!
-                           : firstBookableDate, // Ensure initial date is valid
+              initialDate: _selectedDate!, // Ensure initial date is valid
               firstDate: firstBookableDate, // Cannot book in the past or too early today
               lastDate: lastBookableDate, // Furthest booking date
               onDateChanged: (newDate) {
-                setState(() {
-                  _selectedDate = newDate;
-                 
-                  if (_selectedTime != null) {
-                     _selectedTime = DateTime(
-                       newDate.year,
-                       newDate.month,
-                       newDate.day,
-                       _selectedTime!.hour,
-                       _selectedTime!.minute,
-                     );
-                  }
-                });
+                if (!newDate.isBefore(firstBookableDate)) {
+                  setState(() {
+                    _selectedDate = newDate;
+                    if (_selectedTime != null) {
+                       _selectedTime = DateTime(
+                         newDate.year,
+                         newDate.month,
+                         newDate.day,
+                         _selectedTime!.hour,
+                         _selectedTime!.minute,
+                       );
+                    }
+                  });
+                }
               },
             ),
             const Divider(height: 20),
@@ -565,20 +569,21 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
             Text('Time (9:00 AM - 4:00 PM)', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             SizedBox(
-              height: 150, // Provide adequate height for the picker
-              child: CupertinoTheme( // Optional: Use Material theme styles if preferred
+              height: 150, 
+              child: CupertinoTheme( 
                 data: CupertinoThemeData(
                   textTheme: CupertinoTextThemeData(
-                    // Style the text within the picker
                     dateTimePickerTextStyle: TextStyle(
                       fontSize: 18,
-                      color: Theme.of(context).textTheme.bodyLarge?.color, // Match app theme
+                      color: Theme.of(context).textTheme.bodyLarge?.color, 
                     ),
                   ),
                 ),
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.time, 
-                  initialDateTime: _selectedTime, 
+                  initialDateTime: _selectedTime ?? DateTime( // Fallback just in case
+                        _selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0
+                      ), 
                   minimumDate: minTime, 
                   maximumDate: maxTime, 
                   minuteInterval: 30, 
@@ -590,6 +595,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                          _selectedDate!.year, 
                          _selectedDate!.month, 
                          _selectedDate!.day,
+                         newTime.hour,
                          newTime.minute, 
                        );
                     });
