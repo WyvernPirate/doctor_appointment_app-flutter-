@@ -223,7 +223,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               _buildMapSection(doctor),
             // Optional About Section
             // Check if 'bio' field exists in your Doctor model and Firestore
-            if (doctor.bio != null && doctor.bio!.isNotEmpty)
+            if (doctor.bio.isNotEmpty)
                _buildAboutSection(doctor),
           ],
         ),
@@ -353,7 +353,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
            ),
            const SizedBox(height: 8),
            Text(
-             doctor.bio!, // Display the bio text
+             doctor.bio, 
              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: Colors.grey.shade800),
            ),
          ],
