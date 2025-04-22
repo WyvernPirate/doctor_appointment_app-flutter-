@@ -1,14 +1,15 @@
 // lib/screens/DoctorDetails.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // If showing map
-import 'package:url_launcher/url_launcher.dart'; // For launching calls/maps
-import '/models/doctor.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '/models/doctor.dart'; // Ensure this path is correct
 import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // --- Main Details Screen Widget ---
 class DoctorDetails extends StatefulWidget {
-  final String doctorId; // ID of the doctor to display
+  final String doctorId;
 
   const DoctorDetails({
     super.key,
@@ -20,17 +21,34 @@ class DoctorDetails extends StatefulWidget {
 }
 
 class _DoctorDetailsState extends State<DoctorDetails> {
-  Doctor? _doctor; // Holds the fetched doctor data
+  Doctor? _doctor;
   bool _isLoading = true;
   String? _error;
+  String? _loggedInUserId;
 
-  // --- Map Controller (Optional) ---
+  // --- Map Controller ---
   GoogleMapController? _mapController;
 
   @override
   void initState() {
     super.initState();
-    _fetchDoctorDetails();
+    _initialize();
+  }
+
+  // Combined initialization
+  Future<void> _initialize() async {
+    await _loadUserId();
+    await _fetchDoctorDetails();
+  }
+
+  // Load logged-in user ID
+  Future<void> _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _loggedInUserId = prefs.getString('loggedInUserId');
+      });
+    }
   }
 
   // Fetches doctor data from Firestore
@@ -72,16 +90,13 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   // --- Helper to launch phone dialer ---
   Future<void> _launchCaller(String? phoneNumber) async {
     if (phoneNumber == null || phoneNumber.isEmpty) {
-      if (!mounted) return; // Check mounted before showing SnackBar
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Phone number not available.')),
       );
       return;
     }
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
@@ -110,12 +125,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
       query = Uri.encodeComponent(address!);
     }
 
-    // Universal Maps URL works across platforms
     final Uri mapUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
-
-    // Platform specific URLs (optional, might give better integration)
-    final Uri appleMapUri = Uri.parse('maps://?q=$query');
-    final Uri googleMapUri = Uri.parse('geo:$query');
 
     if (await canLaunchUrl(mapUri)) {
       await launchUrl(mapUri, mode: LaunchMode.externalApplication);
@@ -128,25 +138,33 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     }
   }
 
-  // --- Handle Booking Action: Show Bottom Sheet ---
+
+  // --- CORRECT Handle Booking Action: Show Bottom Sheet ---
+  // REMOVED the incorrect first _handleBooking function
   void _handleBooking() {
-    if (_doctor == null) return; // Don't show if doctor data isn't loaded
+    if (_doctor == null || _loggedInUserId == null) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Cannot book appointment. User or doctor data missing.')),
+       );
+       return;
+    }
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Allows sheet to take more height if needed
-      shape: const RoundedRectangleBorder( // Optional: Rounded top corners
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
       builder: (BuildContext context) {
-        // Return the stateful widget that contains the sheet content
-        return _BookingBottomSheetContent(doctor: _doctor!);
+        return _BookingBottomSheetContent(
+          doctor: _doctor!,
+          userId: _loggedInUserId!,
+        );
       },
     );
   }
 
-
-  // --- Build Method for the Screen ---
+  // --- Build Method ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,7 +172,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         title: Text(_isLoading || _doctor == null ? 'Details' : _doctor!.name),
         elevation: 1,
         actions: [
-          // Optional: Favorite toggle button
+          // Favorite toggle button
           if (_doctor != null)
             IconButton(
               icon: Icon(
@@ -174,22 +192,21 @@ class _DoctorDetailsState extends State<DoctorDetails> {
       body: _buildBodyContent(),
 
       // --- Floating Action Button for Booking ---
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // Position
-      floatingActionButton: _isLoading || _doctor == null // Show only when loaded
-          ? null // Hide if loading or error
-          : FloatingActionButton.extended( // Use the correct widget name
-              onPressed: _handleBooking, // Trigger the bottom sheet
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _isLoading || _doctor == null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _handleBooking,
               label: const Text('Book Appointment'),
               icon: const Icon(Icons.calendar_today_outlined),
-              backgroundColor: Theme.of(context).primaryColor, // Use theme color
-              // foregroundColor: Colors.white, // Handled by theme usually
+              backgroundColor: Theme.of(context).primaryColor,
+              // foregroundColor: Colors.white, // REMOVED: Not a direct property
             ),
     );
   }
 
   // --- Body Content Builder ---
   Widget _buildBodyContent() {
-    // Handle Loading State
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -205,13 +222,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
       return const Center(child: Text("Doctor data is unavailable."));
     }
 
-    // --- Build UI when Doctor Data is Loaded ---
     final doctor = _doctor!;
-    return SafeArea( // Ensure content avoids notches and system areas
-      bottom: true, // Apply safe area to bottom for FAB
-      top: false, // AppBar handles top safe area
+    return SafeArea(
+      bottom: true,
+      top: false,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 90), // Padding below content for FAB
+        padding: const EdgeInsets.only(bottom: 90),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -225,8 +241,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
             // Optional Map Section
             if (doctor.location != null)
               _buildMapSection(doctor),
-            // Optional About Section
-            // Check if 'bio' field exists in your Doctor model and Firestore
+            // Optional About Section - Check for null/empty bio
             if (doctor.bio != null && doctor.bio!.isNotEmpty)
                _buildAboutSection(doctor),
           ],
@@ -238,10 +253,9 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   // --- Header Section ---
   Widget _buildHeaderSection(Doctor doctor) {
     return Stack(
-      clipBehavior: Clip.none, // Allow avatar to overflow
+      clipBehavior: Clip.none,
       alignment: Alignment.topCenter,
       children: [
-        // Background color area
         Container(
           height: 150,
           width: double.infinity,
@@ -264,7 +278,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
             ),
           ),
         ),
-        // Text content positioned below the avatar area
         Padding(
           padding: const EdgeInsets.only(top: 240.0),
           child: Column(
@@ -286,10 +299,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
                 children: [
                   Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
                   const SizedBox(width: 5),
-                  Text(
-                    '${doctor.rating.toStringAsFixed(1)} ',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey.shade600),
-                  ),
+                  
                 ],
               ),
             ],
@@ -299,7 +309,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-  // --- Info Section (Address, Phone, Working Hours) ---
+  // --- Info Section ---
   Widget _buildInfoSection(Doctor doctor) {
     return Card(
       elevation: 2,
@@ -308,13 +318,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
           children: [
-            // Address ListTile
             ListTile(
               leading: Icon(Icons.location_on_outlined, color: Theme.of(context).primaryColor),
               title: const Text('Address'),
               subtitle: Text(doctor.address.isNotEmpty ? doctor.address : 'Not Available'),
-              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue), // Indicate tappable
-              onTap: () => _launchMap(doctor.location, doctor.address), // Launch maps app
+              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue),
+              onTap: () => _launchMap(doctor.location, doctor.address),
               dense: true,
             ),
             _buildDivider(),
@@ -322,21 +331,20 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               leading: Icon(Icons.phone_outlined, color: Theme.of(context).primaryColor),
               title: const Text('Phone'),
               subtitle: Text(doctor.phone.isNotEmpty ? doctor.phone : 'Not Available'),
-              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue), // Indicate tappable
-              onTap: () => _launchCaller(doctor.phone), // Launch phone dialer
+              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue),
+              onTap: () => _launchCaller(doctor.phone),
               dense: true,
             ),
-            _buildDivider(), // Separator line
-            // Working Hours ListTile (Check if data exists)
+            _buildDivider(),
+            // CORRECTED: Working Hours ListTile with null/empty check
             ListTile(
                leading: Icon(Icons.access_time_outlined, color: Theme.of(context).primaryColor),
                title: const Text('Working Hours'),
-              // subtitle: Text(
-                 // Check if 'workingHours' field exists in your Doctor model and has data
+              /// subtitle: Text(
                 // (doctor.workingHours != null && doctor.workingHours!.isNotEmpty)
                  //  ? doctor.workingHours!
-                  // : 'Not Available'
-              // ),
+                 //  : 'Not Available'
+             //  ),
                dense: true,
              ),
           ],
@@ -345,8 +353,9 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-  // --- About Section (Optional) ---
+  // --- About Section ---
   Widget _buildAboutSection(Doctor doctor) {
+     // No need for '!' if called after the check in _buildBodyContent
      return Padding(
        padding: const EdgeInsets.all(16.0),
        child: Column(
@@ -358,7 +367,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
            ),
            const SizedBox(height: 8),
            Text(
-             doctor.bio!, // Display the bio text
+             doctor.bio ?? '', // Use null-aware operator ?? for safety
              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: Colors.grey.shade800),
            ),
          ],
@@ -366,11 +375,9 @@ class _DoctorDetailsState extends State<DoctorDetails> {
      );
   }
 
-  // --- Map Section (Optional) ---
+  // --- Map Section ---
   Widget _buildMapSection(Doctor doctor) {
-    // Show map only if location data is available
     if (doctor.location == null) return const SizedBox.shrink();
-
     return Container(
       height: 200,
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
@@ -378,7 +385,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: ClipRRect( 
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: GoogleMap(
           initialCameraPosition: CameraPosition(
@@ -413,14 +420,16 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-} // End of _DoctorDetailsState
+} 
 
-// --- Booking Bottom Sheet Content Widget ---
-// (Place this within the same DoctorDetails.dart file, but outside the _DoctorDetailsState class)
 class _BookingBottomSheetContent extends StatefulWidget {
-  final Doctor doctor; // Pass doctor info if needed for booking logic
+  final Doctor doctor;
+  final String userId;
 
-  const _BookingBottomSheetContent({required this.doctor});
+  const _BookingBottomSheetContent({
+    required this.doctor,
+    required this.userId,
+  });
 
   @override
   State<_BookingBottomSheetContent> createState() => _BookingBottomSheetContentState();
@@ -428,179 +437,160 @@ class _BookingBottomSheetContent extends StatefulWidget {
 
 class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> {
   DateTime? _selectedDate;
-  DateTime? _selectedTime; // Using DateTime to easily combine later
+  DateTime? _selectedTime;
+  bool _isBooking = false;
 
   @override
   void initState() {
-    super.initState();
-    // Initialize with today's date and a default time (e.g., 9:00 AM)
+     super.initState();
     final now = DateTime.now();
-    _selectedDate = now;
+    final DateTime firstValidDate = (now.hour >= 16)
+        ? DateTime(now.year, now.month, now.day + 1)
+        : DateTime(now.year, now.month, now.day);
+    _selectedDate = firstValidDate;
     _selectedTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      9, // Default hour (9 AM)
-      0, // Default minute (00)
+      _selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0,
     );
   }
 
-  // Helper to combine selected date and time into a single DateTime object
   DateTime? get _finalSelectedDateTime {
-    if (_selectedDate == null || _selectedTime == null) {
-      return null; // Return null if either date or time is not selected
-    }
-    // Combine date part from _selectedDate and time part from _selectedTime
+     if (_selectedDate == null || _selectedTime == null) return null;
     return DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
+      _selectedDate!.year, _selectedDate!.month, _selectedDate!.day,
+      _selectedTime!.hour, _selectedTime!.minute,
     );
   }
 
-  // --- Placeholder for Actual Booking Logic ---
   Future<void> _confirmBooking() async {
     final bookingDateTime = _finalSelectedDateTime;
-    if (bookingDateTime == null) {
-      // Should not happen if button is enabled correctly, but good practice
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select both date and time.')),
-      );
+    if (bookingDateTime == null || _isBooking) {
       return;
     }
 
-    // Close the bottom sheet first
-    if (mounted) {
-       Navigator.pop(context); // Close the sheet
+    if (!mounted) return;
+    setState(() { _isBooking = true; });
+
+    final appointmentData = {
+      'doctorId': widget.doctor.id,
+      'doctorName': widget.doctor.name,
+      'doctorSpecialty': widget.doctor.specialty,
+      'doctorImageUrl': widget.doctor.imageUrl,
+      'userId': widget.userId,
+      'appointmentTime': Timestamp.fromDate(bookingDateTime),
+      'status': 'Scheduled',
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await FirebaseFirestore.instance.collection('appointments').add(appointmentData);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking confirmed for ${widget.doctor.name}'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error booking appointment: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to book appointment: ${e.toString()}'),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() { _isBooking = false; });
+      }
     }
-
-    // --- TODO: Implement Actual Booking Logic Here ---
-    //   // Show success message
-         if (!mounted) return;
-         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(
-             content: Text(
-               'Booking confirmed for ${widget.doctor.name} on ${bookingDateTime.toLocal().toString().substring(0, 16)}',
-             ),
-             duration: const Duration(seconds: 4),
-           ),
-         );
-
-    // } catch (e) {
-    //   // Dismiss loading indicator
-    //   // dismissLoadingDialog();
-    //   // Show error message
-    //   showErrorSnackBar("Failed to book appointment: $e");
-    // }
-    // --- End of TODO ---
   }
 
 
   @override
   Widget build(BuildContext context) {
-    // Define date/time constraints
-    final now = DateTime.now();
-    // Set first bookable date (e.g., today or tomorrow)
+     final now = DateTime.now();
     final DateTime firstBookableDate = (now.hour >= 16) ? DateTime(now.year, now.month, now.day + 1) : DateTime(now.year, now.month, now.day);
-    // Set last bookable date (e.g., 90 days from now)
     final DateTime lastBookableDate = now.add(const Duration(days: 90));
-    // Define time boundaries for the picker (e.g., 9:00 AM to 4:00 PM)
-    final DateTime minTime = DateTime(now.year, now.month, now.day, 9, 0);
-    final DateTime maxTime = DateTime(now.year, now.month, now.day, 16, 0);
-
-    return SingleChildScrollView( // Ensures content scrolls if screen is small
+   final DateTime minTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0); 
+    final DateTime maxTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 16, 0); 
+    return SingleChildScrollView(
       child: Padding(
-        // Add padding around the content and for the bottom safe area
         padding: EdgeInsets.only(
-          left: 16.0,
-          right: 16.0,
-          top: 20.0,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20.0 // Adjust for keyboard if needed
+          left: 16.0, right: 16.0, top: 20.0,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20.0
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Sheet height adjusts to content
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Header with Title and Close Button ---
+            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Select Date & Time',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context), // Dismiss the sheet
-                )
-              ],
+                Text('Select Date & Time', style: Theme.of(context).textTheme.titleLarge),
+                IconButton(icon: const Icon(Icons.close), tooltip: 'Close', onPressed: () => Navigator.pop(context))
+              ]
             ),
             const Divider(height: 20),
 
-            // --- Date Picker Section ---
+            // Date Picker
             Text('Date', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             CalendarDatePicker(
-              initialDate: (_selectedDate != null && _selectedDate!.isAfter(firstBookableDate.subtract(const Duration(days:1))))
-                           ? _selectedDate!
-                           : firstBookableDate, // Ensure initial date is valid
-              firstDate: firstBookableDate, // Cannot book in the past or too early today
-              lastDate: lastBookableDate, // Furthest booking date
+              initialDate: _selectedDate!,
+              firstDate: firstBookableDate,
+              lastDate: lastBookableDate,
               onDateChanged: (newDate) {
-                setState(() {
-                  _selectedDate = newDate;
-                  // Update _selectedTime to keep the same time but on the new date
-                  // This ensures the time picker doesn't reset unexpectedly
-                  if (_selectedTime != null) {
-                     _selectedTime = DateTime(
-                       newDate.year,
-                       newDate.month,
-                       newDate.day,
-                       _selectedTime!.hour,
-                       _selectedTime!.minute,
-                     );
-                  }
-                });
+                if (!newDate.isBefore(firstBookableDate)) {
+                  setState(() {
+                    _selectedDate = newDate;
+          
+                    DateTime potentialNewTime = DateTime(
+                      newDate.year, newDate.month, newDate.day,
+                      _selectedTime?.hour ?? 9, 
+                      _selectedTime?.minute ?? 0 
+                    );
+                   
+                    if (potentialNewTime.isBefore(minTime)) {
+                       potentialNewTime = minTime;
+                    } else if (potentialNewTime.isAfter(maxTime)) {
+                       potentialNewTime = DateTime(newDate.year, newDate.month, newDate.day, 9, 0);
+                    }
+                    _selectedTime = potentialNewTime;
+                 } ); 
+                }
               },
             ),
             const Divider(height: 20),
 
-            // --- Time Picker Section ---
+            // Time Picker
             Text('Time (9:00 AM - 4:00 PM)', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             SizedBox(
-              height: 150, // Provide adequate height for the picker
-              child: CupertinoTheme( // Optional: Use Material theme styles if preferred
+              height: 150,
+              child: CupertinoTheme(
                 data: CupertinoThemeData(
                   textTheme: CupertinoTextThemeData(
-                    // Style the text within the picker
-                    dateTimePickerTextStyle: TextStyle(
-                      fontSize: 18,
-                      color: Theme.of(context).textTheme.bodyLarge?.color, // Match app theme
-                    ),
+                    dateTimePickerTextStyle: TextStyle(fontSize: 18, color: Theme.of(context).textTheme.bodyLarge?.color),
                   ),
                 ),
                 child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.time, // Show only time picker
-                  initialDateTime: _selectedTime, // Start at the selected/default time
-                  minimumDate: minTime, // Earliest selectable time (9:00 AM)
-                  maximumDate: maxTime, // Latest selectable time (4:00 PM)
-                  minuteInterval: 30, // Allow selection in 30-minute increments
-                  use24hFormat: false, // Use AM/PM format
+                  mode: CupertinoDatePickerMode.time,
+                  initialDateTime: _selectedTime ?? DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0),
+                  minimumDate: minTime,
+                  maximumDate: maxTime,
+                  minuteInterval: 15,
+                  use24hFormat: false,
                   onDateTimeChanged: (newTime) {
-                    // Update the time state, keeping the selected date
                     setState(() {
-                       _selectedTime = DateTime(
-                         _selectedDate!.year, // Keep year from selected date
-                         _selectedDate!.month, // Keep month from selected date
-                         _selectedDate!.day, // Keep day from selected date
-                         newTime.hour, // Update hour from picker
-                         newTime.minute, // Update minute from picker
-                       );
+                       _selectedTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, newTime.hour, newTime.minute);
                     });
                   },
                 ),
@@ -608,22 +598,23 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
             ),
             const SizedBox(height: 25),
 
-            // --- Confirmation Button ---
-            Center( // Center the button horizontally
+            // Confirmation Button
+            Center(
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Confirm Booking'),
+                icon: _isBooking
+                    ? Container(width: 20, height: 20, padding: const EdgeInsets.all(2.0), child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                    : const Icon(Icons.check_circle_outline),
+                label: Text(_isBooking ? 'Booking...' : 'Confirm Booking'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                   textStyle: const TextStyle(fontSize: 16),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
                 ),
-                // Button is enabled only if both date and time are selected
-                onPressed: (_selectedDate != null && _selectedTime != null)
-                    ? _confirmBooking // Call booking logic
-                    : null, // Disable button otherwise
+                onPressed: (_selectedDate != null && _selectedTime != null && !_isBooking) ? _confirmBooking : null,
               ),
             ),
-            const SizedBox(height: 10), // Extra space at the bottom
+            const SizedBox(height: 10),
           ],
         ),
       ),

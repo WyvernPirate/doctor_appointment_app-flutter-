@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // import 'package:google_maps_flutter/google_maps_flutter.dart'; // temporarily removed map import
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
 import 'InitLogin.dart';
 import 'Appointments.dart';
-import 'Profile.dart'; // Ensure Profile.dart exists and is correct
+import 'Profile.dart'; 
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -21,6 +20,8 @@ class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
+  
+  static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filter State ---
   final TextEditingController _searchController = TextEditingController();
@@ -234,8 +235,14 @@ class _HomeState extends State<Home> {
     if (confirmLogout) {
       // Clear user session data
       SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('loggedInUserId');
       await prefs.remove('loggedInUserId');
       await prefs.setBool('isGuest', false); // Reset guest status
+
+      if (userId != null) {
+         await prefs.remove(_prefsKeyAppointments + userId); // Remove user-specific cache
+         print("Local appointments cache cleared for user $userId.");
+      }
 
       if (!mounted) return;
       // Navigate to login screen and remove all previous routes
@@ -247,9 +254,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // --- Removed Map Method ---
-  // void _onMapCreated(GoogleMapController controller) { ... }
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -258,7 +262,6 @@ class _HomeState extends State<Home> {
 
   // --- Body Building Logic ---
   Widget _buildBody() {
-    // Return the appropriate screen based on the selected bottom nav index
     switch (_selectedIndex) {
       case 0:
         return _homeScreenBody();
@@ -307,16 +310,16 @@ class _HomeState extends State<Home> {
   Widget _homeScreenBody() {
     return Column(
       children: [
-        // --- Search Section (Always visible below AppBar) ---
+        // --- Search Section ---
         Padding(
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
-          child: _searchSection(), // The search TextField widget
+          child: _searchSection(), 
         ),
 
         // --- Scrollable Content Area ---
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _fetchDoctors, // Enable pull-to-refresh for the list area
+            onRefresh: _fetchDoctors, 
             child: CustomScrollView(
               slivers: <Widget>[
                 // --- Predefined Filter Buttons ---
@@ -335,11 +338,10 @@ class _HomeState extends State<Home> {
                   ),
                 ),
 
-                // --- Main Doctor List (or loading/error/empty state) ---
+                // --- Main Doctor List  ---
                 _buildSliverDoctorList(),
 
                 // --- Header for Favorite Doctors Section ---
-                // Show only if logged in and there are favorite doctors
                 if (!_isGuest && _favoriteDoctors.isNotEmpty)
                    SliverToBoxAdapter(
                      child: Padding(
@@ -351,7 +353,7 @@ class _HomeState extends State<Home> {
                      ),
                    ),
 
-                // --- Favorite Doctor List (or empty state for favorites) ---
+                // --- Favorite Doctor List ---
                 // Show only if logged in
                 if (!_isGuest)
                    _buildSliverFavoriteDoctorList(),
@@ -390,10 +392,9 @@ class _HomeState extends State<Home> {
         child: _buildErrorWidget(),
       );
     }
-    // Handle empty list state (after filtering or initially)
     if (_filteredDoctors.isEmpty) {
       // Show an empty list message
-      return SliverToBoxAdapter( // Use SliverToBoxAdapter for simple content
+      return SliverToBoxAdapter( 
         child: _buildEmptyListWidget(),
       );
     }
@@ -404,7 +405,7 @@ class _HomeState extends State<Home> {
           // Build each doctor item using the DoctorListItem widget
           return DoctorListItem(doctor: _filteredDoctors[index], isFavoriteView: false);
         },
-        childCount: _filteredDoctors.length, // Number of items in the filtered list
+        childCount: _filteredDoctors.length, 
       ),
     );
   }
