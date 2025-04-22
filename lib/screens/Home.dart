@@ -20,6 +20,8 @@ class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
+  
+  static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filter State ---
   final TextEditingController _searchController = TextEditingController();
@@ -233,8 +235,14 @@ class _HomeState extends State<Home> {
     if (confirmLogout) {
       // Clear user session data
       SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('loggedInUserId');
       await prefs.remove('loggedInUserId');
       await prefs.setBool('isGuest', false); // Reset guest status
+
+      if (userId != null) {
+         await prefs.remove(_prefsKeyAppointments + userId); // Remove user-specific cache
+         print("Local appointments cache cleared for user $userId.");
+      }
 
       if (!mounted) return;
       // Navigate to login screen and remove all previous routes
