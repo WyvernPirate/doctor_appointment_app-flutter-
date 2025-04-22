@@ -128,34 +128,32 @@ class _ProfileState extends State<Profile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use AppBar only if not nested within another Scaffold with AppBar
-      // If Profile is a tab in Home, Home's AppBar might be sufficient
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: true,
-        backgroundColor: Colors.transparent, // Make AppBar transparent
-        elevation: 0, // Remove shadow
-        foregroundColor: Theme.of(context).textTheme.titleLarge?.color, // Inherit text color
-        // --- Updated Actions Section ---
+        backgroundColor: Colors.transparent, 
+        elevation: 0, 
+        foregroundColor: Theme.of(context).textTheme.titleLarge?.color, 
+      
         actions: [
           // Show settings menu only when profile is loaded and not empty
           if (!_isLoading && _profileData.isNotEmpty)
             PopupMenuButton<ProfileAction>(
               icon: Icon(
                 Icons.settings_outlined,
-                color: Theme.of(context).iconTheme.color, // Use theme icon color
+                color: Theme.of(context).iconTheme.color, 
               ),
               tooltip: 'Settings',
-              onSelected: _handleProfileAction, // Callback function for selection
+              onSelected: _handleProfileAction, 
               itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileAction>>[
                 // Edit Profile Option
                 const PopupMenuItem<ProfileAction>(
                   value: ProfileAction.editProfile,
-                  child: ListTile( // Use ListTile for icon + text
+                  child: ListTile( 
                     leading: Icon(Icons.edit_outlined),
                     title: Text('Edit Profile'),
                     dense: true,
-                    contentPadding: EdgeInsets.zero, // Adjust padding
+                    contentPadding: EdgeInsets.zero, 
                   ),
                 ),
                 // Appearance Option
@@ -178,15 +176,15 @@ class _ProfileState extends State<Profile> {
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
-                const PopupMenuDivider(), // Optional separator
+                const PopupMenuDivider(), 
                 // Delete Account Option
                 PopupMenuItem<ProfileAction>(
                   value: ProfileAction.deleteAccount,
                   child: ListTile(
-                    leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), // Warning color
+                    leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), 
                     title: Text(
                       'Delete Account',
-                      style: TextStyle(color: Colors.red.shade700), // Warning color
+                      style: TextStyle(color: Colors.red.shade700), 
                     ),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -194,10 +192,10 @@ class _ProfileState extends State<Profile> {
                 ),
               ],
             ),
-          const SizedBox(width: 8), // Add padding to the right of the button
+          const SizedBox(width: 8),
         ],
       ),
-      body: _buildProfileBody(), // Extracted body logic
+      body: _buildProfileBody(), 
     );
   }
 
@@ -211,7 +209,7 @@ class _ProfileState extends State<Profile> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Column( // Use Column for text and retry button
+          child: Column( 
              mainAxisAlignment: MainAxisAlignment.center,
              children: [
                const Icon(Icons.error_outline, color: Colors.grey, size: 50),
@@ -234,42 +232,37 @@ class _ProfileState extends State<Profile> {
     }
 
     // --- Main Profile Content ---
-    return RefreshIndicator( // Optional: Add pull-to-refresh
+    return RefreshIndicator( 
       onRefresh: _fetchProfileData,
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(), // Ensure scroll even if content fits
-        padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0), // Adjust top padding
+        physics: const AlwaysScrollableScrollPhysics(), 
+        padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0), 
         child: Column(
           children: [
             // --- Profile Header Section ---
             _buildProfileHeader(),
             const SizedBox(height: 24),
 
-            // --- Profile Details Section (Using Card and ListTiles) ---
+            // --- Profile Details Section  ---
             _buildProfileDetailsCard(),
-
-            // Optional: Add other sections like 'My Activity', 'Settings Shortcut', etc.
-            // const SizedBox(height: 24),
-            // _buildOtherSections(),
           ],
         ),
       ),
     );
   }
 
-  // --- Helper for Profile Header (Avatar and Name) ---
+  // --- Profile Header ---
   Widget _buildProfileHeader() {
     String? imageUrl = _profileData['profileImageUrl'];
     ImageProvider<Object> backgroundImage =
-        const AssetImage('assets/profile_placeholder.png'); // Default placeholder
+        const AssetImage('assets/profile_placeholder.png'); 
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      // Basic validation: Check if it looks like a URL
+      // Basic validation:
       if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
          backgroundImage = NetworkImage(imageUrl);
       } else {
          print("Warning: profileImageUrl does not seem to be a valid URL: $imageUrl");
-         // Keep the placeholder if the URL format is suspicious
       }
     }
 
@@ -281,8 +274,6 @@ class _ProfileState extends State<Profile> {
           backgroundImage: backgroundImage,
           onBackgroundImageError: (exception, stackTrace) {
             print("Error loading profile image: $exception");
-            // Optionally set state to show placeholder if error occurs,
-            // but backgroundImage already defaults to placeholder
           },
           child: Container(
              decoration: BoxDecoration(
@@ -302,7 +293,6 @@ class _ProfileState extends State<Profile> {
               ),
           textAlign: TextAlign.center,
         ),
-        // Optional: Add email below name if desired and available
         if (_profileData['email'] != null && _profileData['email'].isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
@@ -384,15 +374,15 @@ class _ProfileState extends State<Profile> {
       subtitle: Text(
         subtitle.isEmpty ? 'Not Provided' : subtitle, // Handle empty strings
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          height: isMultiline ? 1.4 : 1.2, // Adjust line height
+          height: isMultiline ? 1.4 : 1.2, 
         ),
       ),
       dense: true,
-      isThreeLine: isMultiline && subtitle.length > 35, // Adjust threshold for three lines
+      isThreeLine: isMultiline && subtitle.length > 35, 
     );
   }
 
-  // --- Reusable Divider ---
+  // ---Divider ---
   Widget _buildDivider() {
     return Divider(
       height: 1,
@@ -408,17 +398,17 @@ class _ProfileState extends State<Profile> {
     switch (selectedAction) {
       case ProfileAction.editProfile:
         // TODO: Navigate to Edit Profile Screen
-        // Example: Navigator.push(context, MaterialPageRoute(builder: (_) => EditProfileScreen(profileData: _profileData)));
+       
         _showSnackBar('Edit Profile selected (Not Implemented)');
         break;
       case ProfileAction.appearance:
         // TODO: Navigate to Appearance Settings Screen or show a dialog
-        // Example: Navigator.push(context, MaterialPageRoute(builder: (_) => AppearanceSettingsScreen()));
+       
         _showSnackBar('Appearance selected (Not Implemented)');
         break;
       case ProfileAction.location:
         // TODO: Navigate to Location Settings Screen or manage permissions
-        // Example: Navigator.push(context, MaterialPageRoute(builder: (_) => LocationSettingsScreen()));
+      
         _showSnackBar('Location Settings selected (Not Implemented)');
         break;
       case ProfileAction.deleteAccount:
@@ -427,13 +417,13 @@ class _ProfileState extends State<Profile> {
     }
   }
 
-  // --- Example Delete Confirmation Dialog ---
+  // --- Delete Confirmation Dialog ---
   Future<void> _showDeleteConfirmationDialog() async {
     if (!mounted) return;
 
     bool? confirmDelete = await showDialog<bool>(
       context: context,
-      barrierDismissible: false, // User must tap button!
+      barrierDismissible: false, 
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Account?'),
@@ -453,14 +443,14 @@ class _ProfileState extends State<Profile> {
             TextButton(
               child: const Text('Cancel'),
               onPressed: () {
-                Navigator.of(context).pop(false); // Return false
+                Navigator.of(context).pop(false); 
               },
             ),
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
               child: const Text('DELETE'),
               onPressed: () {
-                Navigator.of(context).pop(true); // Return true
+                Navigator.of(context).pop(true); 
               },
             ),
           ],
@@ -470,18 +460,18 @@ class _ProfileState extends State<Profile> {
 
     if (confirmDelete == true) {
       // User confirmed deletion
-      _performAccountDeletion(); // Call the actual deletion logic
+      _performAccountDeletion(); 
     } else {
       // User cancelled
       _showSnackBar('Account deletion cancelled.');
     }
   }
 
-  // --- Actual Account Deletion Logic ---
+  // --- Account Deletion Logic ---
   Future<void> _performAccountDeletion() async {
      if (!mounted || _userId == null) return;
 
-     // Show loading indicator (optional, but good UX)
+     // Show loading indicator
      showDialog(
        context: context,
        barrierDismissible: false,
@@ -489,7 +479,7 @@ class _ProfileState extends State<Profile> {
      );
 
      try {
-       // 1. Delete Firestore data (add other collections if needed)
+       // 1. Delete Firestore data
        await FirebaseFirestore.instance.collection('users').doc(_userId!).delete();
        // Example: Delete related appointments
        // QuerySnapshot appointments = await FirebaseFirestore.instance.collection('appointments').where('userId', isEqualTo: _userId!).get();
@@ -523,19 +513,15 @@ class _ProfileState extends State<Profile> {
        //   (Route<dynamic> route) => false,
        // );
 
-       // Alternatively, just pop the profile screen if appropriate
        if (Navigator.canPop(context)) {
          Navigator.pop(context);
-         // You might need to trigger a state update on the previous screen (e.g., Home)
        }
-
 
      } catch (e) {
        print("Error deleting account: $e");
        if (!mounted) return;
-       Navigator.of(context).pop(); // Dismiss loading indicator
+       Navigator.of(context).pop(); 
        _showSnackBar('Error deleting account: ${e.toString()}');
      }
   }
-
-} // End of _ProfileState
+} 
