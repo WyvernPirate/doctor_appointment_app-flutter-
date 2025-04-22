@@ -207,11 +207,11 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
     // --- Build UI when Doctor Data is Loaded ---
     final doctor = _doctor!;
-    return SafeArea( // Ensure content avoids notches and system areas
-      bottom: true, // Apply safe area to bottom for FAB
-      top: false, // AppBar handles top safe area
+    return SafeArea( 
+      bottom: true, 
+      top: false, 
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 90), // Padding below content for FAB
+        padding: const EdgeInsets.only(bottom: 90), 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -238,10 +238,9 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   // --- Header Section ---
   Widget _buildHeaderSection(Doctor doctor) {
     return Stack(
-      clipBehavior: Clip.none, // Allow avatar to overflow
+      clipBehavior: Clip.none, 
       alignment: Alignment.topCenter,
       children: [
-        // Background color area
         Container(
           height: 150,
           width: double.infinity,
@@ -264,7 +263,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
             ),
           ),
         ),
-        // Text content positioned below the avatar area
+    
         Padding(
           padding: const EdgeInsets.only(top: 240.0),
           child: Column(
@@ -299,7 +298,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-  // --- Info Section (Address, Phone, Working Hours) ---
+  // --- Info Section ---
   Widget _buildInfoSection(Doctor doctor) {
     return Card(
       elevation: 2,
@@ -313,7 +312,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               leading: Icon(Icons.location_on_outlined, color: Theme.of(context).primaryColor),
               title: const Text('Address'),
               subtitle: Text(doctor.address.isNotEmpty ? doctor.address : 'Not Available'),
-              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue), // Indicate tappable
+              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue), 
               onTap: () => _launchMap(doctor.location, doctor.address), // Launch maps app
               dense: true,
             ),
@@ -322,12 +321,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               leading: Icon(Icons.phone_outlined, color: Theme.of(context).primaryColor),
               title: const Text('Phone'),
               subtitle: Text(doctor.phone.isNotEmpty ? doctor.phone : 'Not Available'),
-              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue), // Indicate tappable
+              trailing: const Icon(Icons.launch, size: 18, color: Colors.blue), 
               onTap: () => _launchCaller(doctor.phone), // Launch phone dialer
               dense: true,
             ),
             _buildDivider(), // Separator line
-            // Working Hours ListTile (Check if data exists)
+           
             ListTile(
                leading: Icon(Icons.access_time_outlined, color: Theme.of(context).primaryColor),
                title: const Text('Working Hours'),
@@ -345,7 +344,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-  // --- About Section (Optional) ---
+  // --- About Section ---
   Widget _buildAboutSection(Doctor doctor) {
      return Padding(
        padding: const EdgeInsets.all(16.0),
@@ -366,7 +365,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
      );
   }
 
-  // --- Map Section (Optional) ---
+  // --- Map Section  ---
   Widget _buildMapSection(Doctor doctor) {
     // Show map only if location data is available
     if (doctor.location == null) return const SizedBox.shrink();
@@ -416,10 +415,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 } // End of _DoctorDetailsState
 
 // --- Booking Bottom Sheet Content Widget ---
-// (Place this within the same DoctorDetails.dart file, but outside the _DoctorDetailsState class)
 class _BookingBottomSheetContent extends StatefulWidget {
-  final Doctor doctor; // Pass doctor info if needed for booking logic
-
+  final Doctor doctor; 
   const _BookingBottomSheetContent({required this.doctor});
 
   @override
@@ -440,8 +437,8 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
       now.year,
       now.month,
       now.day,
-      9, // Default hour (9 AM)
-      0, // Default minute (00)
+      9, 
+      0, 
     );
   }
 
