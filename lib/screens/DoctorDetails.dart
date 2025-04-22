@@ -420,11 +420,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-} // End of _DoctorDetailsState
+} 
 
-
-// --- Booking Bottom Sheet Content Widget ---
-// (This widget remains the same as the previous correct version)
 class _BookingBottomSheetContent extends StatefulWidget {
   final Doctor doctor;
   final String userId;
@@ -521,9 +518,8 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
      final now = DateTime.now();
     final DateTime firstBookableDate = (now.hour >= 16) ? DateTime(now.year, now.month, now.day + 1) : DateTime(now.year, now.month, now.day);
     final DateTime lastBookableDate = now.add(const Duration(days: 90));
-    final DateTime minTime = DateTime(now.year, now.month, now.day, 9, 0);
-    final DateTime maxTime = DateTime(now.year, now.month, now.day, 16, 0);
-
+   final DateTime minTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0); 
+    final DateTime maxTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 16, 0); 
     return SingleChildScrollView(
       child: Padding(
         padding: EdgeInsets.only(
@@ -555,10 +551,20 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                 if (!newDate.isBefore(firstBookableDate)) {
                   setState(() {
                     _selectedDate = newDate;
-                    if (_selectedTime != null) {
-                       _selectedTime = DateTime(newDate.year, newDate.month, newDate.day, _selectedTime!.hour, _selectedTime!.minute);
+          
+                    DateTime potentialNewTime = DateTime(
+                      newDate.year, newDate.month, newDate.day,
+                      _selectedTime?.hour ?? 9, 
+                      _selectedTime?.minute ?? 0 
+                    );
+                   
+                    if (potentialNewTime.isBefore(minTime)) {
+                       potentialNewTime = minTime;
+                    } else if (potentialNewTime.isAfter(maxTime)) {
+                       potentialNewTime = DateTime(newDate.year, newDate.month, newDate.day, 9, 0);
                     }
-                  });
+                    _selectedTime = potentialNewTime;
+                 } ); 
                 }
               },
             ),
@@ -580,7 +586,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                   initialDateTime: _selectedTime ?? DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0),
                   minimumDate: minTime,
                   maximumDate: maxTime,
-                  minuteInterval: 30,
+                  minuteInterval: 15,
                   use24hFormat: false,
                   onDateTimeChanged: (newTime) {
                     setState(() {
