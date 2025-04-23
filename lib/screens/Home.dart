@@ -21,7 +21,7 @@ class _HomeState extends State<Home> {
   int _selectedIndex = 0;
   String? _loggedInUserId;
 
-  // Key for local appointment cache (ensure consistency if used elsewhere)
+  // Key for local appointment storage 
   static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filter State ---
