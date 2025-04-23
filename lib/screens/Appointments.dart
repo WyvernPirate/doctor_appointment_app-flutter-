@@ -315,7 +315,6 @@ class _AppointmentsState extends State<Appointments> {
 
   // Builds the list view containing sections or status messages
   Widget _buildAppointmentList() {
-    // Show loading indicator ONLY if all lists are empty initially
     if (_isLoading && _upcomingAppointments.isEmpty && _pastAppointments.isEmpty && _cancelledAppointments.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
