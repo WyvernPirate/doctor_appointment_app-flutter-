@@ -15,6 +15,10 @@ class Appointments extends StatefulWidget {
 
 class _AppointmentsState extends State<Appointments> {
   List<Map<String, dynamic>> _appointments = [];
+  List<Map<String, dynamic>> _upcomingAppointments = [];
+  List<Map<String, dynamic>> _pastAppointments = [];
+  List<Map<String, dynamic>> _cancelledAppointments = [];
+
   bool _isLoading = true;
   String? _error;
   String? _loggedInUserId;
