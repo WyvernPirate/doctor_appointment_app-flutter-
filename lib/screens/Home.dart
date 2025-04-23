@@ -7,7 +7,7 @@ import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
 import 'InitLogin.dart';
 import 'Appointments.dart';
-import 'Profile.dart'; 
+import 'Profile.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -20,7 +20,8 @@ class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
-  
+
+  // Key for local appointment storage 
   static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filter State ---
@@ -29,7 +30,12 @@ class _HomeState extends State<Home> {
   String? _selectedSpecialtyFilter;
   String? _selectedPredefinedFilter;
   final List<String> _predefinedFilters = [
-    'All', 'Cardiology', 'Dermatology', 'Favorites', 'Cardiology', 'Pediatrics',
+    'All',
+    'Favorites',
+    'Dermatology',
+    'Cardiology',
+    'Pediatrics', 
+    // Add other relevant specialties based on your data
   ];
 
   // --- Firestore Doctor Data State ---
@@ -37,13 +43,15 @@ class _HomeState extends State<Home> {
   List<Doctor> _favoriteDoctors = [];
   bool _isLoadingDoctors = true;
   String? _errorLoadingDoctors;
+  Set<String> _userFavoriteIds =
+      {}; // User's favorite doctor IDs from Firestore
+  final Set<String> _togglingFavorite = {}; // Tracks ongoing favorite toggles
 
   @override
   void initState() {
     super.initState();
     _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
     _initializeHome();
-    _fetchDoctors();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -56,21 +64,34 @@ class _HomeState extends State<Home> {
 
   // --- Initialization and User Status ---
   Future<void> _initializeHome() async {
-    await _loadUserStatus();
+    await _loadUserStatus(); // Load user status first
     if (mounted) {
       _showWelcomeSnackBar();
+      // Fetch doctors only if logged in or guest mode allows viewing
+      if (_loggedInUserId != null || _isGuest) {
+        await _fetchDoctors();
+      } else {
+        // Handle case where user needs to log in
+        setState(() {
+          _isLoadingDoctors = false;
+          _errorLoadingDoctors = "Please log in to view doctors.";
+        });
+      }
     }
   }
 
   Future<void> _loadUserStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isGuest = prefs.getBool('isGuest') ?? false;
-      _loggedInUserId = prefs.getString('loggedInUserId');
-    });
+    bool isGuest = prefs.getBool('isGuest') ?? false;
+    String? userId = prefs.getString('loggedInUserId');
+    if (mounted) {
+      setState(() {
+        _isGuest = isGuest;
+        _loggedInUserId = userId;
+      });
+    }
   }
 
-  // Function to show the welcome SnackBar
   void _showWelcomeSnackBar() {
     if (!mounted) return;
     final message = _isGuest ? "Browsing as Guest" : "Welcome!";
@@ -91,106 +112,166 @@ class _HomeState extends State<Home> {
 
   // --- Specialties and Filtering ---
   Set<String> _getUniqueSpecialties() {
-    // Get unique specialties from the main doctor list
     return _doctors.map((doctor) => doctor.specialty).toSet();
   }
 
   void _onSearchChanged() {
-    // Trigger filtering when search text changes
     _filterDoctors();
   }
 
   void _onPredefinedFilterSelected(String filter) {
-     // Update state when a predefined filter button is tapped
-     setState(() {
-       _selectedPredefinedFilter = filter;
-       _selectedSpecialtyFilter = null;
-     });
-     _filterDoctors();
+    setState(() {
+      _selectedPredefinedFilter = filter;
+      _selectedSpecialtyFilter =
+          null; // Reset dropdown when predefined is chosen
+    });
+    _filterDoctors();
   }
 
   void _onSpecialtyFilterSelected(String? specialty) {
-     // Update state when a specialty is selected from the dropdown
-     setState(() {
-       _selectedSpecialtyFilter = specialty;     
-       _selectedPredefinedFilter = 'All';
-     });
-     _filterDoctors();
+    setState(() {
+      _selectedSpecialtyFilter = specialty;
+      // Reset predefined filter ONLY if the selected specialty is not null
+      // If user selects 'All Specialties' (null), keep the predefined filter active
+      if (specialty != null) {
+        _selectedPredefinedFilter = 'All';
+      }
+    });
+    _filterDoctors();
   }
 
+  // Applies filters based on current state
   void _filterDoctors() {
-    // Main filtering logic based on current state
     if (!mounted) return;
 
     final lowerCaseQuery = _searchController.text.toLowerCase().trim();
-    List<Doctor> tempFilteredList = List.from(_doctors); // Start with all doctors
+    List<Doctor> tempFilteredList = List.from(
+      _doctors,
+    ); // Start with the master list
 
-    // Apply Predefined Filter
-    if (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All') {
-      tempFilteredList = tempFilteredList.where((doctor) =>
-          doctor.specialty.toLowerCase() == _selectedPredefinedFilter!.toLowerCase()).toList();
+    // 1. Apply Predefined Filter
+    if (_selectedPredefinedFilter != null &&
+        _selectedPredefinedFilter != 'All') {
+      if (_selectedPredefinedFilter == 'Favorites') {
+        // Filter by the isFavorite flag
+        tempFilteredList =
+            tempFilteredList.where((doctor) => doctor.isFavorite).toList();
+      } else {
+        // Filter by specialty
+        tempFilteredList =
+            tempFilteredList
+                .where(
+                  (doctor) =>
+                      doctor.specialty.toLowerCase() ==
+                      _selectedPredefinedFilter!.toLowerCase(),
+                )
+                .toList();
+      }
     }
 
-    // Apply Dropdown Specialty Filter
-    if (_selectedSpecialtyFilter != null) {
-      tempFilteredList = tempFilteredList.where((doctor) =>
-          doctor.specialty == _selectedSpecialtyFilter).toList();
+    // 2. Apply Dropdown Specialty Filter (Only if 'Favorites' button is NOT active)
+    if (_selectedSpecialtyFilter != null &&
+        _selectedPredefinedFilter != 'Favorites') {
+      tempFilteredList =
+          tempFilteredList
+              .where((doctor) => doctor.specialty == _selectedSpecialtyFilter)
+              .toList();
     }
 
-    // Apply Text Search Filter
+    // 3. Apply Text Search Filter (applied last)
     if (lowerCaseQuery.isNotEmpty) {
-      tempFilteredList = tempFilteredList.where((doctor) {
-        final lowerCaseName = doctor.name.toLowerCase();
-        final lowerCaseSpecialty = doctor.specialty.toLowerCase();
-        // Add more fields to search here if needed
-        return lowerCaseName.contains(lowerCaseQuery) ||
-               lowerCaseSpecialty.contains(lowerCaseQuery);
-      }).toList();
+      tempFilteredList =
+          tempFilteredList.where((doctor) {
+            final lowerCaseName = doctor.name.toLowerCase();
+            final lowerCaseSpecialty = doctor.specialty.toLowerCase();
+            return lowerCaseName.contains(lowerCaseQuery) ||
+                lowerCaseSpecialty.contains(lowerCaseQuery);
+          }).toList();
     }
 
-    // Update the state with the final filtered list
+    // Update the state variable that the main list view uses
     setState(() {
       _filteredDoctors = tempFilteredList;
     });
   }
 
-  // --- Data Fetching ---
+  // --- Data Fetching  ---
   Future<void> _fetchDoctors() async {
-    // Fetch doctors from Firestore and update state
     if (!mounted) return;
     setState(() {
       _isLoadingDoctors = true;
       _errorLoadingDoctors = null;
-      // Don't clear filters on refresh, just clear data lists
       _doctors = [];
       _filteredDoctors = [];
       _favoriteDoctors = [];
+      _userFavoriteIds = {};
     });
+
     try {
-      QuerySnapshot querySnapshot =
+      if (_loggedInUserId != null) {
+        try {
+          DocumentSnapshot userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(_loggedInUserId!)
+                  .get();
+          if (userDoc.exists && userDoc.data() != null) {
+            final data = userDoc.data() as Map<String, dynamic>;
+            if (data.containsKey('favoriteDoctorIds') &&
+                data['favoriteDoctorIds'] is List) {
+              _userFavoriteIds =
+                  List<String>.from(data['favoriteDoctorIds']).toSet();
+            }
+          }
+        } catch (e) {
+          print("Error fetching user favorites: $e");
+        }
+      }
+
+      QuerySnapshot doctorSnapshot =
           await FirebaseFirestore.instance.collection('doctors').get();
+
       if (mounted) {
-        final fetchedDoctors = querySnapshot.docs
-            .map((doc) => Doctor.fromFirestore(doc))
-            .toList();
+        final List<Doctor> processedDoctors =
+            doctorSnapshot.docs.map((doc) {
+              Doctor doctor = Doctor.fromFirestore(doc);
+              bool isFav = _userFavoriteIds.contains(doctor.id);
+              return Doctor(
+                id: doctor.id,
+                name: doctor.name,
+                specialty: doctor.specialty,
+                address: doctor.address,
+                phone: doctor.phone,
+                imageUrl: doctor.imageUrl,
+                rating: doctor.rating,
+                location: doctor.location,
+                bio: doctor.bio, //workingHours: doctor.workingHours,
+                isFavorite: isFav,
+              );
+            }).toList();
+
         setState(() {
-          _doctors = fetchedDoctors;
-          // Populate favorites based on the isFavorite flag from Firestore data
+          _doctors = processedDoctors;
           _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList();
           _isLoadingDoctors = false;
-          _filterDoctors(); // Apply current filters to the newly fetched data
+          _errorLoadingDoctors = null;
+          _filterDoctors();
         });
       }
     } catch (e, stackTrace) {
       print("Error fetching doctors: $e\n$stackTrace");
       if (mounted) {
-        // Handle errors during fetching
         String errorMessage = 'Failed to load doctors.';
         if (e is FirebaseException) {
           errorMessage += ' (Code: ${e.code})';
-        } else if (e is FormatException || e is TypeError || e.toString().contains('toDouble')) {
-          errorMessage = 'Error processing doctor data. Please check data format.';
-          print("Data processing error likely related to Firestore data types.");
+        } else if (e is FormatException ||
+            e is TypeError ||
+            e.toString().contains('toDouble')) {
+          errorMessage =
+              'Error processing doctor data. Please check data format.';
+          print(
+            "Data processing error likely related to Firestore data types.",
+          );
         } else {
           errorMessage += ' Please try again.';
         }
@@ -205,55 +286,127 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // --- Logout ---
-  Future<void> _handleLogout() async {
-    // Show confirmation dialog and handle logout process
-    bool confirmLogout = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              child: const Text('Logout'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    ) ?? false; // Default to false if dialog is dismissed
+  // --- Toggle Favorite Status ---
+  Future<void> _toggleFavoriteStatus(
+    String doctorId,
+    bool currentIsFavorite,
+  ) async {
+    if (_loggedInUserId == null || _togglingFavorite.contains(doctorId)) return;
+    if (!mounted) return;
+    setState(() {
+      _togglingFavorite.add(doctorId);
+    });
 
-    if (confirmLogout) {
-      // Clear user session data
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('loggedInUserId');
-      await prefs.remove('loggedInUserId');
-      await prefs.setBool('isGuest', false); // Reset guest status
+    final userDocRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_loggedInUserId!);
+    final updateData =
+        currentIsFavorite
+            ? {
+              'favoriteDoctorIds': FieldValue.arrayRemove([doctorId]),
+            }
+            : {
+              'favoriteDoctorIds': FieldValue.arrayUnion([doctorId]),
+            };
 
-      if (userId != null) {
-         await prefs.remove(_prefsKeyAppointments + userId); // Remove user-specific cache
-         print("Local appointments cache cleared for user $userId.");
+    try {
+      await userDocRef.update(updateData);
+      if (mounted) {
+        currentIsFavorite
+            ? _userFavoriteIds.remove(doctorId)
+            : _userFavoriteIds.add(doctorId);
+        List<Doctor> updatedDoctors =
+            _doctors.map((doctor) {
+              if (doctor.id == doctorId) {
+                return Doctor(
+                  id: doctor.id,
+                  name: doctor.name,
+                  specialty: doctor.specialty,
+                  address: doctor.address,
+                  phone: doctor.phone,
+                  imageUrl: doctor.imageUrl,
+                  rating: doctor.rating,
+                  location: doctor.location,
+                  bio: doctor.bio, // workingHours: doctor.workingHours,
+                  isFavorite: !currentIsFavorite,
+                );
+              }
+              return doctor;
+            }).toList();
+        setState(() {
+          _doctors = updatedDoctors;
+          _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList();
+          _filterDoctors();
+        });
       }
-
-      if (!mounted) return;
-      // Navigate to login screen and remove all previous routes
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const InitLogin()),
-        (Route<dynamic> route) => false,
-      );
+    } catch (e) {
+      print("Error toggling favorite: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not update favorites: ${e.toString()}'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _togglingFavorite.remove(doctorId);
+        });
+      }
     }
   }
 
+  // --- Logout ---
+  Future<void> _handleLogout() async {
+    {
+      // Show confirmation dialog and handle logout process
+      bool confirmLogout =
+          await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Confirm Logout'),
+                content: const Text('Are you sure you want to logout?'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Cancel'),
+                    onPressed: () {
+                      Navigator.of(context).pop(false);
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Logout'),
+                    onPressed: () {
+                      Navigator.of(context).pop(true);
+                    },
+                  ),
+                ],
+              );
+            },
+          ) ??
+          false; // Default to false if dialog is dismissed
+
+      if (confirmLogout) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? userId = prefs.getString('loggedInUserId');
+        if (userId != null) {
+          await prefs.remove(_prefsKeyAppointments + userId);
+          print("Local appointments cache cleared for user $userId.");
+        }
+        await prefs.remove('loggedInUserId');
+        await prefs.setBool('isGuest', false);
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const InitLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    }
+  }
+
+  // --- Navigation ---
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -266,17 +419,20 @@ class _HomeState extends State<Home> {
       case 0:
         return _homeScreenBody();
       case 1:
-        return _isGuest ? _guestModeNotice("view appointments") : const Appointments();
+        return _isGuest
+            ? _guestModeNotice("view appointments")
+            : const Appointments();
       case 2:
-        return _isGuest ? _guestModeNotice("view your profile") : const Profile();
+        return _isGuest
+            ? _guestModeNotice("view your profile")
+            : const Profile();
       default:
         return _homeScreenBody();
     }
   }
 
-  // Widget to display when user is in guest mode for restricted sections
   Widget _guestModeNotice(String action) {
-     return Center(
+    return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -292,73 +448,62 @@ class _HomeState extends State<Home> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Navigate to login screen
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const InitLogin()),
                 );
               },
               child: const Text('Go to Login'),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  // Builds the main content for the Home tab 
+  // Builds the main content for the Home tab
   Widget _homeScreenBody() {
     return Column(
       children: [
-        // --- Search Section ---
+        // Search Section
         Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
-          child: _searchSection(), 
+          padding: const EdgeInsets.only(
+            left: 16.0,
+            right: 16.0,
+            top: 10.0,
+            bottom: 5.0,
+          ),
+          child: _searchSection(),
         ),
-
-        // --- Scrollable Content Area ---
+        // Scrollable Content Area
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _fetchDoctors, 
+            onRefresh: _fetchDoctors,
             child: CustomScrollView(
               slivers: <Widget>[
-                // --- Predefined Filter Buttons ---
-                SliverToBoxAdapter(
-                  child: _buildPredefinedFilters(),
-                ),
-
-                // --- Header for the Main Doctor List ---
+                // Predefined Filters
+                SliverToBoxAdapter(child: _buildPredefinedFilters()),
+                // Header for Main List
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 15, left: 16, right: 16, bottom: 10),
+                    padding: const EdgeInsets.only(
+                      top: 15,
+                      left: 16,
+                      right: 16,
+                      bottom: 10,
+                    ),
                     child: Text(
-                      _getDoctorListTitle(), // Dynamic title based on filters
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      _getDoctorListTitle(),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-
-                // --- Main Doctor List  ---
+                // Main Doctor List (Handles all display including favorites via filter)
                 _buildSliverDoctorList(),
-
-                // --- Header for Favorite Doctors Section ---
-                if (!_isGuest && _favoriteDoctors.isNotEmpty)
-                   SliverToBoxAdapter(
-                     child: Padding(
-                       padding: const EdgeInsets.only(top: 25, left: 16, right: 16, bottom: 10),
-                       child: Text(
-                         'Your Favorite Doctors',
-                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                       ),
-                     ),
-                   ),
-
-                // --- Favorite Doctor List ---
-                // Show only if logged in
-                if (!_isGuest)
-                   _buildSliverFavoriteDoctorList(),
-
-                // Add some padding at the very bottom of the scroll view
+                // Bottom Padding
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ],
             ),
@@ -368,76 +513,48 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // Helper to get the title for the main doctor list based on filter state
   String _getDoctorListTitle() {
-     bool isAnyFilterActive = _searchController.text.isNotEmpty ||
-                              _selectedSpecialtyFilter != null ||
-                              (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All');
-     return isAnyFilterActive ? 'Filtered Doctors' : 'Available Doctors';
+    bool isAnyFilterActive =
+        _searchController.text.isNotEmpty ||
+        _selectedSpecialtyFilter != null ||
+        (_selectedPredefinedFilter != null &&
+            _selectedPredefinedFilter != 'All');
+    if (_selectedPredefinedFilter == 'Favorites') {
+      return 'Favorite Doctors';
+    }
+    return isAnyFilterActive ? 'Filtered Doctors' : 'Available Doctors';
   }
 
   // --- Build Main Doctor List as Sliver ---
   Widget _buildSliverDoctorList() {
-    // Handle loading state
-    if (_isLoadingDoctors) {
-      // Show a loading indicator centered within the remaining space
+    if (_isLoadingDoctors && _doctors.isEmpty) {
       return const SliverFillRemaining(
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    // Handle error state
-    if (_errorLoadingDoctors != null) {
-      // Show error message and retry button centered within the remaining space
-      return SliverFillRemaining(
-        child: _buildErrorWidget(),
-      );
+    if (_errorLoadingDoctors != null && _doctors.isEmpty) {
+      return SliverFillRemaining(child: _buildErrorWidget());
     }
     if (_filteredDoctors.isEmpty) {
-      // Show an empty list message
-      return SliverToBoxAdapter( 
-        child: _buildEmptyListWidget(),
-      );
+      if (_selectedPredefinedFilter == 'Favorites' && !_isGuest) {
+        return SliverToBoxAdapter(child: _buildEmptyFavoritesMessage());
+      }
+      return SliverToBoxAdapter(child: _buildEmptyListWidget());
     }
-    // Build the actual list using SliverList
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          // Build each doctor item using the DoctorListItem widget
-          return DoctorListItem(doctor: _filteredDoctors[index], isFavoriteView: false);
-        },
-        childCount: _filteredDoctors.length, 
-      ),
-    );
-  }
-
-   // --- Build Favorite Doctor List as Sliver ---
-  Widget _buildSliverFavoriteDoctorList() {
-    // Loading/Error is handled by the main list's state for simplicity
-    if (_isLoadingDoctors) {
-      // Don't show anything for favorites while the main list is loading
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
-    }
-    // Handle empty favorites list state (only if logged in)
-    if (_favoriteDoctors.isEmpty && !_isGuest) {
-       // Show a message indicating no favorites have been added
-       return SliverToBoxAdapter(
-         child: _buildEmptyFavoritesWidget(),
-       );
-    }
-    // Build the list of favorite doctors using SliverList
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          // Build each favorite doctor item, potentially styled differently
-          return DoctorListItem(doctor: _favoriteDoctors[index], isFavoriteView: true);
-        },
-        childCount: _favoriteDoctors.length, // Number of favorite doctors
-      ),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final doctor = _filteredDoctors[index];
+        return DoctorListItem(
+          doctor: doctor,
+          onFavoriteToggle:
+              _loggedInUserId != null ? _toggleFavoriteStatus : null,
+          isTogglingFavorite: _togglingFavorite.contains(doctor.id),
+        );
+      }, childCount: _filteredDoctors.length),
     );
   }
 
   // --- Helper Widgets for List States ---
-  // Builds the widget shown when there's an error fetching doctors
   Widget _buildErrorWidget() {
     return Center(
       child: Padding(
@@ -448,7 +565,7 @@ class _HomeState extends State<Home> {
             Icon(Icons.error_outline, color: Colors.red[700], size: 50),
             const SizedBox(height: 10),
             Text(
-              _errorLoadingDoctors!, // Display the error message
+              _errorLoadingDoctors ?? 'An unknown error occurred.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.red[700], fontSize: 16),
             ),
@@ -456,7 +573,7 @@ class _HomeState extends State<Home> {
             ElevatedButton.icon(
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              onPressed: _fetchDoctors, // Allow user to retry fetching
+              onPressed: _fetchDoctors,
             ),
           ],
         ),
@@ -464,16 +581,14 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // Builds the widget shown when the main doctor list is empty (either initially or after filtering)
   Widget _buildEmptyListWidget() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
         child: Text(
-          // Provide context-specific message
           _doctors.isEmpty
-              ? 'No doctors found at the moment.' // If the original list was empty
-              : 'No doctors match your current filters.', // If filters resulted in empty list
+              ? 'No doctors found at the moment.'
+              : 'No doctors match your current filters.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Colors.grey),
         ),
@@ -481,48 +596,48 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // Builds the widget shown when the favorite doctors list is empty
-   Widget _buildEmptyFavoritesWidget() {
-     return Padding(
-       padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
-       child: Center(
-         child: Text(
-           'You haven\'t added any favorite doctors yet.',
-           textAlign: TextAlign.center,
-           style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
-         ),
-       ),
-     );
-   }
+  // --- Helper for Empty Favorites Message ---
+  Widget _buildEmptyFavoritesMessage() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
+      child: Center(
+        child: Text(
+          'You haven\'t added any favorite doctors yet.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+        ),
+      ),
+    );
+  }
 
   // Builds the horizontal list of predefined filter chips
   Widget _buildPredefinedFilters() {
-     return Container(
-      height: 50, // Fixed height for the filter bar
+    return Container(
+      height: 50,
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
       child: ListView.separated(
-        scrollDirection: Axis.horizontal, // Make it scroll horizontally
+        scrollDirection: Axis.horizontal,
         itemCount: _predefinedFilters.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8), // Space between chips
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final filter = _predefinedFilters[index];
-          final isSelected = filter == _selectedPredefinedFilter; // Check if this chip is selected
-
-          // Use FilterChip for selectable category buttons
+          final isSelected = filter == _selectedPredefinedFilter;
           return FilterChip(
             label: Text(filter),
             selected: isSelected,
             onSelected: (selected) {
-              // Only trigger update if the chip is being selected
               if (selected) {
-                 _onPredefinedFilterSelected(filter);
+                _onPredefinedFilterSelected(filter);
               }
             },
             showCheckmark: false,
             selectedColor: Theme.of(context).primaryColor.withOpacity(0.9),
             checkmarkColor: Colors.white,
             labelStyle: TextStyle(
-              color: isSelected ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+              color:
+                  isSelected
+                      ? Colors.white
+                      : Theme.of(context).textTheme.bodyLarge?.color,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
             backgroundColor: Colors.grey.shade200,
@@ -534,144 +649,153 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // --- Search Section
+  // --- Search Section ---
   Widget _searchSection() {
-     // Use padding here if needed, or rely on padding applied in _homeScreenBody
-    
-     return TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          filled: true, // Use a fill color
-          fillColor: Colors.white, // Background color of the field
-          contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0), // Inner padding
-          hintText: 'Search Doctor or Specialty...', // Placeholder text
-          hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14), // Style for hint text
-          // Search icon at the beginning
-          prefixIcon: const Padding(
-            padding: EdgeInsets.only(left: 15, right: 10),
-            child: Icon(Icons.search, size: 22),
-          ),
-          // Icons at the end (clear button and filter dropdown)
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min, // Take only needed horizontal space
-            children: [
-              // Show clear button only if there is text in the search field
-              if (_searchController.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
-                  tooltip: 'Clear Search',
-                  onPressed: () {
-                    _searchController.clear(); // Clear text, listener will trigger filter update
-                  },
-                ),
-              // Optional visual divider
-              const SizedBox(
-                 height: 30, // Adjust height to match input field
-                 child: VerticalDivider(color: Colors.grey, indent: 5, endIndent: 5, thickness: 0.7),
+    return TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 12.0,
+          horizontal: 15.0,
+        ),
+        hintText: 'Search Doctor or Specialty...',
+        hintStyle: const TextStyle(color: Color(0xffDDDADA), fontSize: 14),
+        prefixIcon: const Padding(
+          padding: EdgeInsets.only(left: 15, right: 10),
+          child: Icon(Icons.search, size: 22),
+        ),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_searchController.text.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                tooltip: 'Clear Search',
+                onPressed: () {
+                  _searchController.clear();
+                },
               ),
-              // Dropdown menu button for specialty filtering
-              PopupMenuButton<String?>(
-                icon: Icon(
-                  Icons.filter_list,
-                  size: 24,
-                  // Change icon color if a specialty filter is active
-                  color: _selectedSpecialtyFilter == null ? Colors.grey : Theme.of(context).primaryColor,
-                ),
-                tooltip: 'Filter by Specialty',
-                onSelected: _onSpecialtyFilterSelected, // Callback when an item is selected
-                itemBuilder: (BuildContext context) {
-                  // Build the dropdown menu items
-                  Set<String> specialties = _getUniqueSpecialties();
-                  List<PopupMenuEntry<String?>> menuItems = [];
-
-                  // Add "All Specialties" option
+            const SizedBox(
+              height: 30,
+              child: VerticalDivider(
+                color: Colors.grey,
+                indent: 5,
+                endIndent: 5,
+                thickness: 0.7,
+              ),
+            ),
+            PopupMenuButton<String?>(
+              icon: Icon(
+                Icons.filter_list,
+                size: 24,
+                color:
+                    _selectedSpecialtyFilter == null
+                        ? Colors.grey
+                        : Theme.of(context).primaryColor,
+              ),
+              tooltip: 'Filter by Specialty',
+              onSelected: _onSpecialtyFilterSelected,
+              itemBuilder: (BuildContext context) {
+                Set<String> specialties = _getUniqueSpecialties();
+                List<PopupMenuEntry<String?>> menuItems = [];
+                menuItems.add(
+                  PopupMenuItem<String?>(
+                    value: null,
+                    child: Text(
+                      'All Specialties',
+                      style: TextStyle(
+                        fontWeight:
+                            _selectedSpecialtyFilter == null
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                );
+                if (specialties.isNotEmpty) {
+                  menuItems.add(const PopupMenuDivider());
+                }
+                var sortedSpecialties = specialties.toList()..sort();
+                for (String specialty in sortedSpecialties) {
                   menuItems.add(
                     PopupMenuItem<String?>(
-                      value: null, // Use null to represent 'All'
+                      value: specialty,
                       child: Text(
-                        'All Specialties',
-                        style: TextStyle(fontWeight: _selectedSpecialtyFilter == null ? FontWeight.bold : FontWeight.normal),
+                        specialty,
+                        style: TextStyle(
+                          fontWeight:
+                              _selectedSpecialtyFilter == specialty
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                        ),
                       ),
                     ),
                   );
-
-                  // Add divider if there are specific specialties
-                  if (specialties.isNotEmpty) {
-                     menuItems.add(const PopupMenuDivider());
-                  }
-
-                  // Create a sorted list of specialties for consistent order
-                  var sortedSpecialties = specialties.toList()..sort();
-                  // Add menu item for each unique specialty
-                  for (String specialty in sortedSpecialties) {
-                    menuItems.add(
-                      PopupMenuItem<String?>(
-                        value: specialty,
-                        child: Text(
-                          specialty,
-                          style: TextStyle(fontWeight: _selectedSpecialtyFilter == specialty ? FontWeight.bold : FontWeight.normal),
-                        ),
-                      ),
-                    );
-                  }
-                  return menuItems;
-                },
-              ),
-              const SizedBox(width: 8), // Padding after the filter icon
-            ],
-          ),
-          // Define the border appearance
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30), // Rounded corners
-            borderSide: BorderSide(color: Colors.grey.shade300), // Default border
-          ),
-           enabledBorder: OutlineInputBorder( // Border when the field is enabled but not focused
-             borderRadius: BorderRadius.circular(30),
-             borderSide: BorderSide(color: Colors.grey.shade300),
-           ),
-           focusedBorder: OutlineInputBorder( // Border when the field is focused
-             borderRadius: BorderRadius.circular(30),
-             borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5), // Highlight border
-           ),
+                }
+                return menuItems;
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
         ),
-      );
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(
+            color: Theme.of(context).primaryColor,
+            width: 1.5,
+          ),
+        ),
+      ),
+    );
   }
 
   // --- Main Build Method for the entire screen ---
-  @override
+  @override // <--- This build method MUST be INSIDE _HomeState
   Widget build(BuildContext context) {
     return Scaffold(
-      
       appBar: AppBar(
         title: const Text('Doctor Appointment'),
         centerTitle: true,
-        elevation: 1, // Subtle shadow below AppBar
+        elevation: 1,
         actions: [
-          // Show logout button only if user is logged in
           if (!_isGuest && _loggedInUserId != null)
             IconButton(
               icon: const Icon(Icons.logout),
               tooltip: 'Logout',
-              onPressed: _handleLogout, // Trigger logout process
+              onPressed: _handleLogout,
             ),
-          const SizedBox(width: 8), // Padding for the action button
+          const SizedBox(width: 8),
         ],
       ),
-     
-      body: _buildBody(),
-      // Bottom navigation bar
+      body: _buildBody(), // Calls a method within _HomeState
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Appointments'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            label: 'Appointments',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).primaryColor,
         unselectedItemColor: Colors.grey[600],
         showUnselectedLabels: true,
-        onTap: _onItemTapped,
+        onTap: _onItemTapped, // Calls a method within _HomeState
       ),
     );
-  }
+  } // <--- End of build method
 }
