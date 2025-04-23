@@ -48,6 +48,50 @@ class _AppointmentsState extends State<Appointments> {
     }
   }
 
+  // --- Categorize Appointments ---
+  void _categorizeAppointments() {
+    final now = DateTime.now();
+    List<Map<String, dynamic>> upcoming = [];
+    List<Map<String, dynamic>> past = [];
+    List<Map<String, dynamic>> cancelled = [];
+
+    for (var appointment in _appointments) {
+      DateTime? appointmentDateTime;
+      if (appointment['appointmentTime'] is DateTime) {
+        appointmentDateTime = appointment['appointmentTime'] as DateTime;
+      } else if (appointment['appointmentTimeMillis'] is int) {
+        appointmentDateTime = DateTime.fromMillisecondsSinceEpoch(appointment['appointmentTimeMillis']);
+        //update the map to store DateTime directly after conversion
+        appointment['appointmentTime'] = appointmentDateTime;
+      }
+
+      String status = (appointment['status'] ?? 'Unknown').toLowerCase();
+
+      if (status == 'cancelled') {
+        cancelled.add(appointment);
+      } else if (appointmentDateTime != null && appointmentDateTime.isBefore(now)) {
+        past.add(appointment);
+      } else {
+        // Treat as upcoming if not cancelled and not strictly in the past
+        upcoming.add(appointment);
+      }
+    }
+
+    // Sort each category if needed (e.g., past by most recent first)
+    upcoming.sort((a, b) => (a['appointmentTime'] as DateTime).compareTo(b['appointmentTime'] as DateTime));
+    past.sort((a, b) => (b['appointmentTime'] as DateTime).compareTo(a['appointmentTime'] as DateTime)); 
+    cancelled.sort((a, b) => (b['appointmentTime'] as DateTime).compareTo(a['appointmentTime'] as DateTime));
+
+
+    if (mounted) {
+      setState(() {
+        _upcomingAppointments = upcoming;
+        _pastAppointments = past;
+        _cancelledAppointments = cancelled;
+      });
+    }
+  }
+
   // Load User ID from SharedPreferences
   Future<void> _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -81,6 +125,7 @@ class _AppointmentsState extends State<Appointments> {
             _appointments = localAppointments;
             _error = null;
           });
+          _categorizeAppointments(); // Categorize after loading
         }
       }
     } catch (e) {
@@ -99,9 +144,6 @@ class _AppointmentsState extends State<Appointments> {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('appointments')
           .where('userId', isEqualTo: _loggedInUserId)
-          // Filter out cancelled appointments from the main view
-          .where('status', isNotEqualTo: 'Cancelled')
-          .orderBy('status') 
           .orderBy('appointmentTime', descending: false)
           .get();
 
@@ -120,8 +162,7 @@ class _AppointmentsState extends State<Appointments> {
           _isLoading = false;
           _error = null;
         });
-
-        // --- Save fetched data locally ---
+        _categorizeAppointments(); // Categorize after fetching
         await _saveAppointmentsLocally(firestoreAppointments);
       }
     } catch (e) {
@@ -211,10 +252,15 @@ class _AppointmentsState extends State<Appointments> {
         // Update local state and cache
         if (mounted) {
           setState(() {
-            // Remove the appointment from the local list
-            _appointments.removeWhere((appt) => appt['id'] == appointmentId);
-          });
-          // Update the local cache without the cancelled appointment
+            // Find the appointment in the main list
+            int index = _appointments.indexWhere((appt) => appt['id'] == appointmentId);
+            if (index != -1) {
+               // Update the status in the main list
+               _appointments[index]['status'] = 'Cancelled';
+               // Re-categorize based on the updated main list
+               _categorizeAppointments();
+            }
+          });          
           await _saveAppointmentsLocally(_appointments);
 
           ScaffoldMessenger.of(context).showSnackBar(
