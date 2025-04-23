@@ -1,31 +1,37 @@
+// lib/widgets/doctor_list_item.dart
 import 'package:flutter/material.dart';
-import '/screens/DoctorDetails.dart';
 import '/models/doctor.dart';
+import '/screens/DoctorDetails.dart';
 
 class DoctorListItem extends StatelessWidget {
   final Doctor doctor;
-  final bool isFavoriteView; // Flag to indicate if it's in the favorite list
+  final bool isFavoriteView;
+  // --- NEW: Callback and Loading State ---
+  final Function(String doctorId, bool isCurrentlyFavorite)? onFavoriteToggle;
+  final bool isTogglingFavorite;
+  // --- END NEW ---
 
   const DoctorListItem({
     super.key,
     required this.doctor,
-    this.isFavoriteView = false, // Default to false
+    this.isFavoriteView = false,
+    this.onFavoriteToggle,
+    this.isTogglingFavorite = false,
+    // --- END NEW ---
   });
 
   @override
   Widget build(BuildContext context) {
-    // Define text styles for reuse
     final TextStyle nameStyle = const TextStyle(fontSize: 17, fontWeight: FontWeight.bold);
     final TextStyle detailStyle = TextStyle(fontSize: 13, color: Colors.grey.shade700);
     final TextStyle separatorStyle = TextStyle(fontSize: 13, color: Colors.grey.shade500);
     final TextStyle ratingStyle = TextStyle(fontSize: 13, color: Colors.grey.shade600);
 
-    return InkWell( 
+    return InkWell(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            // Pass the doctor's ID to the details screen
             builder: (context) => DoctorDetails(doctorId: doctor.id),
           ),
         );
@@ -49,7 +55,7 @@ class DoctorListItem extends StatelessWidget {
               : null,
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, 
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Doctor Image
             ClipRRect(
@@ -74,16 +80,10 @@ class DoctorListItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Name
-                  Text(
-                    doctor.name,
-                    style: nameStyle,
-                    maxLines: 1, 
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4), 
-
-                  // 2. Specialty | Address Row
+                  // Name
+                  Text(doctor.name, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  // Specialty | Address Row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start, 
                     children: [
@@ -128,23 +128,29 @@ class DoctorListItem extends StatelessWidget {
               ),
             ),
 
-            if (!isFavoriteView)
-              IconButton(
-                padding: EdgeInsets.zero, 
-                constraints: const BoxConstraints(), 
-                icon: Icon(
-                  doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: doctor.isFavorite ? Colors.redAccent : Colors.grey,
-                  size: 22,
-                ),
-                tooltip: doctor.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
-                onPressed: () {
-                  // TODO: Implement favorite toggle logic
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Favorite toggle for ${doctor.name} (Not implemented)'))
-                  );
-                },
-              ),
+            // --- UPDATED: Favorite Icon Button ---
+            // Show only if the callback is provided (i.e., user is logged in)
+            if (onFavoriteToggle != null)
+              isTogglingFavorite // Show loading indicator if toggling
+                ? Container(
+                    padding: const EdgeInsets.all(12.0), // Match IconButton padding roughly
+                    width: 48, // Match IconButton size roughly
+                    height: 48,
+                    child: const CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                : IconButton( // Show heart button otherwise
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: doctor.isFavorite ? Colors.redAccent : Colors.grey,
+                      size: 24, // Slightly larger icon maybe
+                    ),
+                    tooltip: doctor.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+                    // Call the callback function passed from Home.dart
+                    onPressed: () => onFavoriteToggle!(doctor.id, doctor.isFavorite),
+                  ),
+            // --- END UPDATED ---
           ],
         ),
       ),
