@@ -242,7 +242,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
             if (doctor.location != null)
               _buildMapSection(doctor),
             // Optional About Section - Check for null/empty bio
-            if (doctor.bio != null && doctor.bio!.isNotEmpty)
+            if (doctor.bio.isNotEmpty)
                _buildAboutSection(doctor),
           ],
         ),
