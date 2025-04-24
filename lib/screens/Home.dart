@@ -9,7 +9,7 @@ import '/widgets/doctor_list_item.dart';
 import 'InitLogin.dart';
 import 'Appointments.dart';
 import 'Profile.dart';
-import 'DoctorDetails.dart'; // Import DoctorDetails for marker tap
+import 'DoctorDetails.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -22,37 +22,32 @@ class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
-
-  // Key for local appointment storage 
   static const String _prefsKeyAppointments = 'user_appointments_cache';
-
-  // --- Search & Filter State ---
   final TextEditingController _searchController = TextEditingController();
   List<Doctor> _filteredDoctors = [];
   String? _selectedSpecialtyFilter;
   String? _selectedPredefinedFilter;
   final List<String> _predefinedFilters = [
-    'All',
-    'Favorites',
-    'Map',
-    'Dermatology',
-    'Cardiology',
-    'Pediatrics', 
-    // Add other relevant specialties based on your data
+    'All', 'Favorites', 'Map', 'Dermatology', 'Cardiology', 'Pediatrics',
   ];
-
-  // --- Firestore Doctor Data State ---
   List<Doctor> _doctors = [];
   List<Doctor> _favoriteDoctors = [];
   bool _isLoadingDoctors = true;
   String? _errorLoadingDoctors;
-  Set<String> _userFavoriteIds = {}; // User's favorite doctor IDs from Firestore
-  final Set<String> _togglingFavorite = {}; // Tracks ongoing favorite toggles
+  Set<String> _userFavoriteIds = {};
+  final Set<String> _togglingFavorite = {};
+
+  // --- NEW State for Location and Map ---
+  Position? _currentUserPosition; // Holds user's location
+  bool _isLoadingLocation = false; // Tracks location fetching
+  String? _locationError; // Holds location-specific errors
+  GoogleMapController? _mapController; // Controller to potentially move map later
+  // --- End NEW State ---
 
   @override
   void initState() {
     super.initState();
-    _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
+    _selectedPredefinedFilter = _predefinedFilters.first;
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
   }
@@ -61,19 +56,18 @@ class _HomeState extends State<Home> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _mapController?.dispose(); // Dispose map controller
     super.dispose();
   }
 
   // --- Initialization and User Status ---
   Future<void> _initializeHome() async {
-    await _loadUserStatus(); // Load user status first
+    await _loadUserStatus();
     if (mounted) {
       _showWelcomeSnackBar();
-      // Fetch doctors only if logged in or guest mode allows viewing
       if (_loggedInUserId != null || _isGuest) {
-        await _fetchDoctors();
+        await _fetchDoctors(); // Fetch doctors initially
       } else {
-        // Handle case where user needs to log in
         setState(() {
           _isLoadingDoctors = false;
           _errorLoadingDoctors = "Please log in to view doctors.";
@@ -125,36 +119,37 @@ class _HomeState extends State<Home> {
   }
 
   void _onPredefinedFilterSelected(String filter) {
+     bool switchingToMap = filter == 'Map';
+     bool switchingFromMap = _selectedPredefinedFilter == 'Map' && filter != 'Map';
+
      setState(() {
        _selectedPredefinedFilter = filter;
-       // Reset specialty filter when a predefined one is chosen,
-       // UNLESS the new filter is 'Map' (keep specialty filter state if user switches back)
-       if (filter != 'Map') {
+       // Reset specialty only if switching away from Map to a non-Map list filter
+       if (switchingFromMap || (filter != 'Map' && filter != 'Favorites')) {
           _selectedSpecialtyFilter = null;
        }
      });
-     // Only run list filtering if the selected filter is NOT 'Map'
-     if (filter != 'Map') {
+
+     if (switchingToMap) {
+        // Fetch location when map is selected
+        _getCurrentLocation();
+        // No need to call _filterDoctors for map view
+     } else {
+        // Filter list view if switching to a non-map filter
         _filterDoctors();
      }
-     // If 'Map' is selected, the UI will switch in _homeScreenBody, no need to filter list here.
   }
 
   void _onSpecialtyFilterSelected(String? specialty) {
-     // This filter only applies when not in Map view
-     if (_selectedPredefinedFilter == 'Map') return;
-
+     if (_selectedPredefinedFilter == 'Map') return; // Ignore if map is active
      setState(() {
        _selectedSpecialtyFilter = specialty;
-       // Reset predefined filter ONLY if the selected specialty is not null
-       if (specialty != null) {
-         _selectedPredefinedFilter = 'All';
-       }
+       if (specialty != null) { _selectedPredefinedFilter = 'All'; }
      });
      _filterDoctors();
   }
 
-  // Applies filters based on current state (only runs if Map is not selected)
+  // --- List Filtering Logic ---
   void _filterDoctors() {
     if (!mounted || _selectedPredefinedFilter == 'Map') return; // Don't filter if map is active
 
@@ -405,29 +400,27 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // Builds the main content for the Home tab
+ // --- Builds the main content for the Home tab ---
   Widget _homeScreenBody() {
     return Column(
       children: [
         // --- Fixed Top Section ---
-        // Search Section
         Padding(
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
-          child: _searchSection(), // Search bar always visible
+          child: _searchSection(),
         ),
-        // Predefined Filters
-        _buildPredefinedFilters(), // Filter chips always visible
+        _buildPredefinedFilters(),
 
         // --- Conditional Content Area ---
         Expanded(
-          child: _selectedPredefinedFilter == 'Map' // Check if Map filter is active
-              ? _buildMapView() // Show Map View if 'Map' is selected
-              : _buildListView(), // Otherwise, show the List View
+          child: _selectedPredefinedFilter == 'Map'
+              ? _buildMapView() // Show Map View
+              : _buildListView(), // Show List View
         ),
-        // --- End Conditional Content Area ---
       ],
     );
   }
+  
 
   // Builds the scrollable list view part
   Widget _buildListView() {
@@ -453,19 +446,107 @@ class _HomeState extends State<Home> {
       ),
     );
   }
+  // --- NEW: Get User Location ---
+  Future<void> _getCurrentLocation() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingLocation = true;
+      _locationError = null;
+    });
 
-  // Builds the Google Map view part
+    try {
+      // 1. Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      // 2. Check permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied.');
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied, we cannot request permissions.');
+      }
+
+      // 3. Get current position
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high); // Or .medium for less battery usage
+
+      if (mounted) {
+        setState(() {
+          _currentUserPosition = position;
+          _isLoadingLocation = false;
+        });
+        // Animate map to the new location
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            14.0, // Zoom in closer when user location is found
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error getting location: $e");
+      if (mounted) {
+        setState(() {
+          _locationError = e.toString();
+          _isLoadingLocation = false;
+        });
+      }
+    }
+  }
+
+
+  // --- UPDATED: Builds the Google Map view part ---
   Widget _buildMapView() {
-    // Handle loading state for the map
+    // --- Handle Location Loading/Error ---
+    if (_isLoadingLocation) {
+      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 10), Text("Getting your location...")],));
+    }
+    if (_locationError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.location_off, color: Colors.red, size: 40),
+              const SizedBox(height: 10),
+              Text(
+                'Could not get location: $_locationError',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _getCurrentLocation, // Allow retry
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    // --- End Location Handling ---
+
+    // --- Handle Doctor Data Loading/Error (after location is handled) ---
+    // Show loading for doctors if location is ready but doctors aren't
     if (_isLoadingDoctors && _doctors.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    // Handle error state for the map
+    // Show doctor loading error if location is ready but doctors failed
     if (_errorLoadingDoctors != null && _doctors.isEmpty) {
-      return _buildErrorWidget(); // Reusing list error widget
+      return _buildErrorWidget(); // Reuse list error widget
     }
+    // --- End Doctor Data Handling ---
 
-    // Filter doctors who have a valid location
+
+    // Filter doctors who have a valid location (same as before)
     final doctorsWithLocation = _doctors.where((doc) => doc.location != null).toList();
 
     // Handle case where no doctors have locations
@@ -486,38 +567,50 @@ class _HomeState extends State<Home> {
     final Set<Marker> markers = doctorsWithLocation.map((doctor) {
       return Marker(
         markerId: MarkerId(doctor.id),
-        position: doctor.location!, // Use the LatLng from the doctor model
+        position: doctor.location!,
         infoWindow: InfoWindow(
           title: doctor.name,
           snippet: doctor.specialty,
-          onTap: () { // Navigate when info window itself is tapped
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DoctorDetails(doctorId: doctor.id),
-              ),
-            );
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorDetails(doctorId: doctor.id)));
           }
         ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Customize marker color
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
       );
     }).toSet();
 
-    // Determine initial camera position
-    LatLng initialPosition = doctorsWithLocation.first.location!;
-    // Or use a default location: const LatLng(YOUR_DEFAULT_LAT, YOUR_DEFAULT_LNG);
+    // --- Determine Initial Camera Position ---
+    // Use user's location if available, otherwise a default
+    LatLng initialCameraTarget = _currentUserPosition != null
+        ? LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude)
+        : const LatLng(39.8283, -98.5795); // Default (e.g., center of US)
+
+    double initialZoom = _currentUserPosition != null ? 14.0 : 4.0; // Zoom in if user location known
 
     return GoogleMap(
       initialCameraPosition: CameraPosition(
-        target: initialPosition,
-        zoom: 11.0, // Adjust initial zoom level
+        target: initialCameraTarget,
+        zoom: initialZoom,
       ),
       markers: markers,
       mapType: MapType.normal,
-      myLocationEnabled: true,
-      myLocationButtonEnabled: true,
+      myLocationEnabled: true, // Show blue dot for user location
+      myLocationButtonEnabled: true, // Show button to center on user
       zoomControlsEnabled: true,
-      mapToolbarEnabled: true, // Show button to open in Google Maps app
+      mapToolbarEnabled: true,
+      // Get the controller when the map is created
+      onMapCreated: (GoogleMapController controller) {
+        _mapController = controller;
+        // If user location was already available when map created, move camera
+        if (_currentUserPosition != null) {
+           controller.animateCamera(
+             CameraUpdate.newLatLngZoom(
+               LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude),
+               14.0,
+             ),
+           );
+        }
+      },
     );
   }
 
