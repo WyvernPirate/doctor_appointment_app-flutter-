@@ -1,7 +1,7 @@
 // lib/screens/Home.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:google_maps_flutter/google_maps_flutter.dart'; // temporarily removed map import
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
