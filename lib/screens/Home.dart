@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
@@ -499,10 +500,6 @@ class _HomeState extends State<Home> {
           }
         ),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Customize marker color
-        // onTap for marker body (optional)
-        // onTap: () {
-        //   // Could also navigate here, but infoWindow tap is usually better UX
-        // },
       );
     }).toSet();
 
