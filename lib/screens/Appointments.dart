@@ -309,7 +309,7 @@ class _AppointmentsState extends State<Appointments> {
         title: const Text('Your Appointments'),
         centerTitle: true,
       ),
-      body: _buildAppointmentList(), // Delegate body building
+      body: _buildAppointmentList(),
     );
   }
 
