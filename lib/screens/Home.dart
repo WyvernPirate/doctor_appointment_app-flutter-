@@ -501,7 +501,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-
   // --- UPDATED: Builds the Google Map view part ---
   Widget _buildMapView() {
     // --- Handle Location Loading/Error ---
@@ -518,56 +517,59 @@ class _HomeState extends State<Home> {
               const Icon(Icons.location_off, color: Colors.red, size: 40),
               const SizedBox(height: 10),
               Text(
-                'Could not get location: $_locationError',
+                'Could not get location:',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                // Clean up the error message slightly
+                _locationError!.replaceFirst('Exception: ', ''),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),
-              const SizedBox(height: 10),
-              ElevatedButton(
+              const SizedBox(height: 15),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
                 onPressed: _getCurrentLocation, // Allow retry
-                child: const Text('Retry'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
               ),
+              // Optionally add a button to open app settings for permission errors
+              if (_locationError != null && (_locationError!.contains('permanently denied') || _locationError!.contains('disabled')))
+                 Padding(
+                   padding: const EdgeInsets.only(top: 10.0),
+                   child: TextButton(
+                     // Decide action based on error type
+                     onPressed: _locationError!.contains('disabled')
+                        ? Geolocator.openLocationSettings // Open device location settings
+                        : Geolocator.openAppSettings,    // Open app-specific settings
+                     child: Text(_locationError!.contains('disabled')
+                        ? 'Open Location Settings'
+                        : 'Open App Settings'),
+                   ),
+                 ),
             ],
           ),
         ),
       );
     }
     // --- End Location Handling ---
-
-    // --- Handle Doctor Data Loading/Error (after location is handled) ---
-    // Show loading for doctors if location is ready but doctors aren't
-    if (_isLoadingDoctors && _doctors.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    // Show doctor loading error if location is ready but doctors failed
-    if (_errorLoadingDoctors != null && _doctors.isEmpty) {
-      return _buildErrorWidget(); // Reuse list error widget
-    }
-    // --- End Doctor Data Handling ---
-
-
     // Filter doctors who have a valid location (same as before)
-    final doctorsWithLocation = _doctors.where((doc) => doc.location != null).toList();
-
-    // Handle case where no doctors have locations
-    if (doctorsWithLocation.isEmpty) {
-       return const Center(
-         child: Padding(
-           padding: EdgeInsets.all(20.0),
-           child: Text(
-             'No doctor locations available to display on the map.',
-             textAlign: TextAlign.center,
-             style: TextStyle(fontSize: 16, color: Colors.grey),
-           ),
-         ),
-       );
-    }
+   final doctorsWithLocation = _doctors.where((doc) {
+        // Check if location is not null AND latitude/longitude are valid numbers
+        return doc.location != null &&
+               doc.location!.latitude.isFinite &&
+               doc.location!.longitude.isFinite;
+    }).toList();
 
     // Create map markers
     final Set<Marker> markers = doctorsWithLocation.map((doctor) {
+      final lat = doctor.location!.latitude;
+      final lng = doctor.location!.longitude;
       return Marker(
         markerId: MarkerId(doctor.id),
-        position: doctor.location!,
+        position: LatLng(lat, lng),
         infoWindow: InfoWindow(
           title: doctor.name,
           snippet: doctor.specialty,
@@ -581,13 +583,19 @@ class _HomeState extends State<Home> {
 
     // --- Determine Initial Camera Position ---
     // Use user's location if available, otherwise a default
-    LatLng initialCameraTarget = _currentUserPosition != null
-        ? LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude)
-        : const LatLng(39.8283, -98.5795); // Default (e.g., center of US)
+LatLng initialCameraTarget;
+    double initialZoom;
 
-    double initialZoom = _currentUserPosition != null ? 14.0 : 4.0; // Zoom in if user location known
+    if (_currentUserPosition != null) {
+      initialCameraTarget = LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude);
+      initialZoom = 14.0; // Zoom in closer if user location is known
+    } else {
+      // Absolute fallback (e.g., center of a country/region) if no user location
+      // You might want to adjust this default to your target region
+      initialCameraTarget = const LatLng(39.8283, -98.5795); // Center of US
+      initialZoom = 4.0; // Zoom out if using default
 
-    return GoogleMap(
+    }    return GoogleMap(
       initialCameraPosition: CameraPosition(
         target: initialCameraTarget,
         zoom: initialZoom,
