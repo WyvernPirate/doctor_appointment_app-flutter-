@@ -45,32 +45,6 @@ class _HomeState extends State<Home> {
   String? _locationError; // Holds location-specific errors
   GoogleMapController? _mapController; 
 
-  final String _mapStyleJson = '''
-  [
-    {
-      "featureType": "poi.business",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "labels.text",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    },
-    {
-      "featureType": "transit",
-      "elementType": "labels.icon",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    }
-  ]
-  ''';
- 
-
   @override
   void initState() {
     super.initState();
@@ -639,10 +613,21 @@ LatLng initialCameraTarget;
       myLocationButtonEnabled: true, // Show button to center on user
       zoomControlsEnabled: true,
       mapToolbarEnabled: true,
-      style: _mapStyleJson,
       // Get the controller when the map is created
-      onMapCreated: (GoogleMapController controller) {
+      onMapCreated: (GoogleMapController controller) async {
         _mapController = controller;
+        
+        if (_loadedMapStyle != null) {
+          try {
+            await controller.setMapStyle(_loadedMapStyle!);
+             print("Map style applied successfully in onMapCreated.");
+          } catch (e) {
+             print("Error applying map style in onMapCreated: $e");
+          }
+        } else {
+           print("Map style not loaded yet when map was created.");
+           // The _loadMapStyle function will apply it later if needed
+        }
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
            controller.animateCamera(
