@@ -119,7 +119,7 @@ class DoctorListItem extends StatelessWidget {
                       Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 18),
                       const SizedBox(width: 4),
                       Text(
-                        '${doctor.rating.toStringAsFixed(1)}',
+                        doctor.rating.toStringAsFixed(1),
                         style: ratingStyle,
                       ),
                     ],

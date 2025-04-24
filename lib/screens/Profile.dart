@@ -3,7 +3,6 @@ import '/models/DatabaseHelper.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'InitLogin.dart';
 
 // Enum to represent profile settings actions
 enum ProfileAction {
