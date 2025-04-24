@@ -363,21 +363,21 @@ class _AppointmentsState extends State<Appointments> {
           if (_upcomingAppointments.isNotEmpty) ...[
             _buildSectionHeader('Upcoming Appointments'),
             // Map upcoming appointments to cards
-            ..._upcomingAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: false)).toList(),
+            ..._upcomingAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: false)),
           ],
 
           // --- Past Section ---
           if (_pastAppointments.isNotEmpty) ...[
             _buildSectionHeader('Past Appointments'),
             // Map past appointments to cards (styled differently)
-            ..._pastAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: true)).toList(),
+            ..._pastAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: true)),
           ],
 
           // --- Cancelled Section ---
           if (_cancelledAppointments.isNotEmpty) ...[
             _buildSectionHeader('Cancelled Appointments'),
             // Map cancelled appointments to cards (styled differently)
-            ..._cancelledAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: true)).toList(),
+            ..._cancelledAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: true)),
           ],
 
            // Add some padding at the bottom
