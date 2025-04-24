@@ -1,15 +1,17 @@
 // lib/screens/Home.dart
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart' show rootBundle;
+
 import '/models/doctor.dart';
 import '/widgets/doctor_list_item.dart';
-import 'InitLogin.dart';
 import 'Appointments.dart';
-import 'Profile.dart';
 import 'DoctorDetails.dart';
+import 'InitLogin.dart';
+import 'Profile.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -37,12 +39,37 @@ class _HomeState extends State<Home> {
   Set<String> _userFavoriteIds = {};
   final Set<String> _togglingFavorite = {};
 
-  // --- NEW State for Location and Map ---
+  // --- Location and Map ---
   Position? _currentUserPosition; // Holds user's location
   bool _isLoadingLocation = false; // Tracks location fetching
   String? _locationError; // Holds location-specific errors
-  GoogleMapController? _mapController; // Controller to potentially move map later
-  // --- End NEW State ---
+  GoogleMapController? _mapController; 
+
+  final String _mapStyleJson = '''
+  [
+    {
+      "featureType": "poi.business",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "labels.text",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+    {
+      "featureType": "transit",
+      "elementType": "labels.icon",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    }
+  ]
+  ''';
+ 
 
   @override
   void initState() {
@@ -50,6 +77,12 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first;
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
+    _loadMapStyle();
+  }
+
+  String? _loadedMapStyle;
+  Future<void> _loadMapStyle() async {
+    _loadedMapStyle = await rootBundle.loadString('assets/map_style.json');
   }
 
   @override
@@ -606,6 +639,7 @@ LatLng initialCameraTarget;
       myLocationButtonEnabled: true, // Show button to center on user
       zoomControlsEnabled: true,
       mapToolbarEnabled: true,
+      style: _mapStyleJson,
       // Get the controller when the map is created
       onMapCreated: (GoogleMapController controller) {
         _mapController = controller;
