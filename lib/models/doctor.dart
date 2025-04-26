@@ -51,7 +51,7 @@ class Doctor {
     );
   }
 
-  // Add toJson if you need to save updates back to Firestore
+  // toJson to save updates back to Firestore
   Map<String, dynamic> toJson() {
      return {
        'name': name,
