@@ -539,7 +539,7 @@ class _HomeState extends State<Home> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                onPressed: _getCurrentLocation, // Allow retry
+                onPressed: _getCurrentLocation, 
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
               ),
               // Optionally add a button to open app settings for permission errors
@@ -562,7 +562,7 @@ class _HomeState extends State<Home> {
       );
     }
     // --- End Location Handling ---
-    // Filter doctors who have a valid location (same as before)
+    // Filter doctors who have a valid location 
    final doctorsWithLocation = _doctors.where((doc) {
         // Check if location is not null AND latitude/longitude are valid numbers
         return doc.location != null &&
