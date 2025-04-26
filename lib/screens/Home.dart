@@ -616,7 +616,7 @@ LatLng initialCameraTarget;
       // Get the controller when the map is created
       onMapCreated: (GoogleMapController controller) async {
         _mapController = controller;
-        
+
         if (_loadedMapStyle != null) {
           try {
             await controller.setMapStyle(_loadedMapStyle!);
@@ -626,7 +626,6 @@ LatLng initialCameraTarget;
           }
         } else {
            print("Map style not loaded yet when map was created.");
-           // The _loadMapStyle function will apply it later if needed
         }
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
@@ -640,7 +639,6 @@ LatLng initialCameraTarget;
       },
     );
   }
-
 
   String _getDoctorListTitle() {
      // Title doesn't apply when map is shown, but we keep the logic
@@ -657,16 +655,15 @@ LatLng initialCameraTarget;
      return 'Available Doctors';
   }
 
-  // --- Build Main Doctor List as Sliver ---
+  // --- Build Main Doctor List ---
   Widget _buildSliverDoctorList() {
-    // This method only builds the list view part
     if (_isLoadingDoctors && _doctors.isEmpty) {
       return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
     }
     if (_errorLoadingDoctors != null && _doctors.isEmpty) {
       return SliverFillRemaining(child: _buildErrorWidget());
     }
-    // Check _filteredDoctors for emptiness (relevant when list view is active)
+    // Check _filteredDoctors for emptiness
     if (_filteredDoctors.isEmpty) {
       if (_selectedPredefinedFilter == 'Favorites' && !_isGuest) {
          return SliverToBoxAdapter(child: _buildEmptyFavoritesMessage());
@@ -675,8 +672,6 @@ LatLng initialCameraTarget;
       if (_selectedPredefinedFilter != 'All' || _selectedSpecialtyFilter != null || _searchController.text.isNotEmpty || _doctors.isEmpty) {
          return SliverToBoxAdapter(child: _buildEmptyListWidget());
       }
-      // If 'All' is selected and doctors exist but filtered is empty (shouldn't happen with current logic), maybe show loading?
-      // Or just return empty adapter
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
     // Build the list using _filteredDoctors
@@ -723,14 +718,14 @@ LatLng initialCameraTarget;
   }
 
   Widget _buildEmptyListWidget() {
-    // Message shown when filters result in an empty list (and not the favorites filter)
+    // Message shown when filters result in an empty list
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
         child: Text(
           _doctors.isEmpty
-              ? 'No doctors found at the moment.' // If master list is empty
-              : 'No doctors match your current filters.', // If filters caused emptiness
+              ? 'No doctors found at the moment.' 
+              : 'No doctors match your current filters.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Colors.grey),
         ),
@@ -740,7 +735,6 @@ LatLng initialCameraTarget;
 
   // --- Helper for Empty Favorites Message ---
   Widget _buildEmptyFavoritesMessage() {
-    // Message shown when 'Favorites' filter is active but list is empty
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
       child: Center(
@@ -779,7 +773,7 @@ LatLng initialCameraTarget;
             labelStyle: TextStyle(
               color: isSelected
                   ? Colors.white
-                  : mapFilterActive && filter != 'Map' // Grey out non-map filters if map is active
+                  : mapFilterActive && filter != 'Map'
                       ? Colors.grey.shade500
                       : Theme.of(context).textTheme.bodyLarge?.color,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -823,7 +817,7 @@ LatLng initialCameraTarget;
                 tooltip: 'Clear Search',
                 onPressed: () { _searchController.clear(); },
               )
-            else if (mapFilterActive) // Placeholder
+            else if (mapFilterActive)
               const SizedBox(width: 48),
 
             // Divider
@@ -836,7 +830,7 @@ LatLng initialCameraTarget;
               icon: Icon(
                 Icons.filter_list, size: 24,
                 color: mapFilterActive
-                    ? Colors.grey.shade400 // Disabled color
+                    ? Colors.grey.shade400 
                     : _selectedSpecialtyFilter == null
                         ? Colors.grey
                         : Theme.of(context).primaryColor,
@@ -844,7 +838,7 @@ LatLng initialCameraTarget;
               tooltip: mapFilterActive ? null : 'Filter by Specialty',
               onSelected: mapFilterActive ? null : _onSpecialtyFilterSelected, // Disable selection
               itemBuilder: mapFilterActive
-                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] // Empty list disables
+                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] 
                   : (BuildContext context) {
                       Set<String> specialties = _getUniqueSpecialties();
                       List<PopupMenuEntry<String?>> menuItems = [];
@@ -890,7 +884,7 @@ LatLng initialCameraTarget;
     );
   }
 
-  // --- Main Build Method for the entire screen ---
+  // --- Main Build Method ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
