@@ -5,29 +5,11 @@
       { "visibility": "off" }
     ]
   },
-  { 
-    "featureType": "poi.school",
-    "stylers": [
-      { "visibility": "off" }
-    ]
-  },
   {
     "featureType": "transit",
     "stylers": [
       { "visibility": "off" }
     ]
-  },
-  {
-    "elementType": "labels",
-    "stylers": [
-      { "visibility": "off" }
-    ]
-  },
-  {
-    "featureType": "administrative",
-    "elementType": "geometry",
-    "stylers": [
-      { "visibility": "off" }
-    ]
   }
+  
 ]
