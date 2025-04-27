@@ -54,7 +54,7 @@ This project is a Flutter-based mobile application that allows patients to searc
 
 6.  **Run the app:**
 
-    ```bash
+    bash
     flutter run
  
 
