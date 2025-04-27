@@ -53,7 +53,7 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first;
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
-    rootBundle.loadString('assets/map_style.json').then((string) {
+    rootBundle.loadString('lib/assets/map_style.json').then((string) {
       _mapStyle = string;
     }).catchError((error){
       print("Error loading map style: $error");
@@ -628,6 +628,9 @@ LatLng initialCameraTarget;
         } else {
            print("Map style not loaded yet when map was created.");
         }
+
+        if (!mounted) return;
+
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
            controller.animateCamera(
