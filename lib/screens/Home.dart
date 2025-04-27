@@ -43,33 +43,9 @@ class _HomeState extends State<Home> {
   Position? _currentUserPosition; // Holds user's location
   bool _isLoadingLocation = false; // Tracks location fetching
   String? _locationError; // Holds location-specific errors
-  GoogleMapController? _mapController; 
 
-  final String _mapStyleJson = '''
-  [
-    {
-      "featureType": "poi.business",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "labels.text",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    },
-    {
-      "featureType": "transit",
-      "elementType": "labels.icon",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    }
-  ]
-  ''';
- 
+  GoogleMapController? _mapController; 
+  String? _mapStyle;
 
   @override
   void initState() {
@@ -77,13 +53,14 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first;
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
-    _loadMapStyle();
+    rootBundle.loadString('lib/assets/map_style.json').then((string) {
+      _mapStyle = string;
+    }).catchError((error){
+      print("Error loading map style: $error");
+    });
   }
 
-  String? _loadedMapStyle;
-  Future<void> _loadMapStyle() async {
-    _loadedMapStyle = await rootBundle.loadString('assets/map_style.json');
-  }
+  
 
   @override
   void dispose() {
@@ -534,7 +511,7 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // --- UPDATED: Builds the Google Map view part ---
+  // --- Builds the Google Map view ---
   Widget _buildMapView() {
     // --- Handle Location Loading/Error ---
     if (_isLoadingLocation) {
@@ -556,7 +533,6 @@ class _HomeState extends State<Home> {
               ),
               const SizedBox(height: 5),
               Text(
-                // Clean up the error message slightly
                 _locationError!.replaceFirst('Exception: ', ''),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
@@ -565,10 +541,9 @@ class _HomeState extends State<Home> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                onPressed: _getCurrentLocation, // Allow retry
+                onPressed: _getCurrentLocation, 
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
               ),
-              // Optionally add a button to open app settings for permission errors
               if (_locationError != null && (_locationError!.contains('permanently denied') || _locationError!.contains('disabled')))
                  Padding(
                    padding: const EdgeInsets.only(top: 10.0),
@@ -588,7 +563,7 @@ class _HomeState extends State<Home> {
       );
     }
     // --- End Location Handling ---
-    // Filter doctors who have a valid location (same as before)
+    // Filter doctors who have a valid location 
    final doctorsWithLocation = _doctors.where((doc) {
         // Check if location is not null AND latitude/longitude are valid numbers
         return doc.location != null &&
@@ -621,12 +596,11 @@ LatLng initialCameraTarget;
 
     if (_currentUserPosition != null) {
       initialCameraTarget = LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude);
-      initialZoom = 14.0; // Zoom in closer if user location is known
+      initialZoom = 14.0;
     } else {
-      // Absolute fallback (e.g., center of a country/region) if no user location
-      // You might want to adjust this default to your target region
-      initialCameraTarget = const LatLng(39.8283, -98.5795); // Center of US
-      initialZoom = 4.0; // Zoom out if using default
+      // Absolute fallback if no user location
+      initialCameraTarget = const LatLng(39.8283, -98.5795); // Center of Gaborone
+      initialZoom = 4.0; 
 
     }    return GoogleMap(
       initialCameraPosition: CameraPosition(
@@ -639,10 +613,24 @@ LatLng initialCameraTarget;
       myLocationButtonEnabled: true, // Show button to center on user
       zoomControlsEnabled: true,
       mapToolbarEnabled: true,
-      style: _mapStyleJson,
+
       // Get the controller when the map is created
-      onMapCreated: (GoogleMapController controller) {
+      onMapCreated: (GoogleMapController controller) async {
         _mapController = controller;
+
+        if (_mapStyle != null) {
+          try {
+            await _mapController!.setMapStyle(_mapStyle!);
+             print("Map style applied successfully in onMapCreated.");
+          } catch (e) {
+             print("Error applying map style in onMapCreated: $e");
+          }
+        } else {
+           print("Map style not loaded yet when map was created.");
+        }
+
+        if (!mounted) return;
+
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
            controller.animateCamera(
@@ -655,7 +643,6 @@ LatLng initialCameraTarget;
       },
     );
   }
-
 
   String _getDoctorListTitle() {
      // Title doesn't apply when map is shown, but we keep the logic
@@ -672,16 +659,15 @@ LatLng initialCameraTarget;
      return 'Available Doctors';
   }
 
-  // --- Build Main Doctor List as Sliver ---
+  // --- Build Main Doctor List ---
   Widget _buildSliverDoctorList() {
-    // This method only builds the list view part
     if (_isLoadingDoctors && _doctors.isEmpty) {
       return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
     }
     if (_errorLoadingDoctors != null && _doctors.isEmpty) {
       return SliverFillRemaining(child: _buildErrorWidget());
     }
-    // Check _filteredDoctors for emptiness (relevant when list view is active)
+    // Check _filteredDoctors for emptiness
     if (_filteredDoctors.isEmpty) {
       if (_selectedPredefinedFilter == 'Favorites' && !_isGuest) {
          return SliverToBoxAdapter(child: _buildEmptyFavoritesMessage());
@@ -690,8 +676,6 @@ LatLng initialCameraTarget;
       if (_selectedPredefinedFilter != 'All' || _selectedSpecialtyFilter != null || _searchController.text.isNotEmpty || _doctors.isEmpty) {
          return SliverToBoxAdapter(child: _buildEmptyListWidget());
       }
-      // If 'All' is selected and doctors exist but filtered is empty (shouldn't happen with current logic), maybe show loading?
-      // Or just return empty adapter
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
     // Build the list using _filteredDoctors
@@ -738,14 +722,14 @@ LatLng initialCameraTarget;
   }
 
   Widget _buildEmptyListWidget() {
-    // Message shown when filters result in an empty list (and not the favorites filter)
+    // Message shown when filters result in an empty list
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
         child: Text(
           _doctors.isEmpty
-              ? 'No doctors found at the moment.' // If master list is empty
-              : 'No doctors match your current filters.', // If filters caused emptiness
+              ? 'No doctors found at the moment.' 
+              : 'No doctors match your current filters.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Colors.grey),
         ),
@@ -755,7 +739,6 @@ LatLng initialCameraTarget;
 
   // --- Helper for Empty Favorites Message ---
   Widget _buildEmptyFavoritesMessage() {
-    // Message shown when 'Favorites' filter is active but list is empty
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
       child: Center(
@@ -794,7 +777,7 @@ LatLng initialCameraTarget;
             labelStyle: TextStyle(
               color: isSelected
                   ? Colors.white
-                  : mapFilterActive && filter != 'Map' // Grey out non-map filters if map is active
+                  : mapFilterActive && filter != 'Map'
                       ? Colors.grey.shade500
                       : Theme.of(context).textTheme.bodyLarge?.color,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -838,7 +821,7 @@ LatLng initialCameraTarget;
                 tooltip: 'Clear Search',
                 onPressed: () { _searchController.clear(); },
               )
-            else if (mapFilterActive) // Placeholder
+            else if (mapFilterActive)
               const SizedBox(width: 48),
 
             // Divider
@@ -851,7 +834,7 @@ LatLng initialCameraTarget;
               icon: Icon(
                 Icons.filter_list, size: 24,
                 color: mapFilterActive
-                    ? Colors.grey.shade400 // Disabled color
+                    ? Colors.grey.shade400 
                     : _selectedSpecialtyFilter == null
                         ? Colors.grey
                         : Theme.of(context).primaryColor,
@@ -859,7 +842,7 @@ LatLng initialCameraTarget;
               tooltip: mapFilterActive ? null : 'Filter by Specialty',
               onSelected: mapFilterActive ? null : _onSpecialtyFilterSelected, // Disable selection
               itemBuilder: mapFilterActive
-                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] // Empty list disables
+                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] 
                   : (BuildContext context) {
                       Set<String> specialties = _getUniqueSpecialties();
                       List<PopupMenuEntry<String?>> menuItems = [];
@@ -905,7 +888,7 @@ LatLng initialCameraTarget;
     );
   }
 
-  // --- Main Build Method for the entire screen ---
+  // --- Main Build Method ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
