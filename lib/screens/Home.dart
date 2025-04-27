@@ -48,13 +48,13 @@ class _HomeState extends State<Home> {
   final Set<String> _togglingFavorite = {}; // Track doctors being toggled
 
   // --- Location and Map State ---
-  Position? _currentUserPosition; 
-  bool _isLoadingLocation = false; 
+  Position? _currentUserPosition;
+  bool _isLoadingLocation = false;
   String? _locationError; // Holds location-specific errors
   GoogleMapController? _mapController;
   String? _lightMapStyle; // Style string for light theme
-  String? _darkMapStyle;  // Style string for dark theme
-  Brightness? _currentMapBrightness; 
+  String? _darkMapStyle; // Style string for dark theme
+  Brightness? _currentMapBrightness;
 
   @override
   void initState() {
@@ -62,14 +62,14 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
-    _loadMapStyles(); 
+    _loadMapStyles();
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _mapController?.dispose(); 
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -77,28 +77,35 @@ class _HomeState extends State<Home> {
   Future<void> _loadMapStyles() async {
     try {
       _lightMapStyle = await rootBundle.loadString('lib/assets/map_style.json');
-      _darkMapStyle = await rootBundle.loadString('lib/assets/map_style_dark.json');
+      _darkMapStyle = await rootBundle.loadString(
+        'lib/assets/map_style_dark.json',
+      );
       // Apply style if map is already created and context is available
       if (mounted && _mapController != null) {
-         await _applyMapStyleBasedOnTheme();
+        await _applyMapStyleBasedOnTheme();
       }
     } catch (e) {
       print("Error loading map styles: $e");
-   
     }
   }
 
   // ---Apply map style based on current theme ---
   Future<void> _applyMapStyleBasedOnTheme() async {
     // Ensure map controller, styles, and context are available
-    if (_mapController == null || !mounted || (_lightMapStyle == null && _darkMapStyle == null)) {
-      print("Map style application skipped: Controller null, not mounted, or styles not loaded.");
+    if (_mapController == null ||
+        !mounted ||
+        (_lightMapStyle == null && _darkMapStyle == null)) {
+      print(
+        "Map style application skipped: Controller null, not mounted, or styles not loaded.",
+      );
       return;
     }
 
     final currentThemeBrightness = Theme.of(context).brightness;
     if (_currentMapBrightness == currentThemeBrightness) {
-      print("Map style skipped: Brightness hasn't changed ($currentThemeBrightness).");
+      print(
+        "Map style skipped: Brightness hasn't changed ($currentThemeBrightness).",
+      );
       return;
     }
 
@@ -108,42 +115,45 @@ class _HomeState extends State<Home> {
     if (currentThemeBrightness == Brightness.dark && _darkMapStyle != null) {
       styleToApply = _darkMapStyle;
       print("Selected dark map style.");
-    } else if (currentThemeBrightness == Brightness.light && _lightMapStyle != null) {
+    } else if (currentThemeBrightness == Brightness.light &&
+        _lightMapStyle != null) {
       styleToApply = _lightMapStyle;
       print("Selected light map style.");
     } else {
-       // Fallback logic if one style is missing but the other exists
-       if (currentThemeBrightness == Brightness.dark && _lightMapStyle != null) {
-          print("Warning: Dark map style missing, falling back to light style.");
-          styleToApply = _lightMapStyle;
-       } else if (currentThemeBrightness == Brightness.light && _darkMapStyle != null) {
-          print("Warning: Light map style missing, falling back to dark style.");
-          styleToApply = _darkMapStyle;
-       } else {
-          print("No suitable map style found for $currentThemeBrightness. Using default map.");
-         
-       }
+      // Fallback logic if one style is missing but the other exists
+      if (currentThemeBrightness == Brightness.dark && _lightMapStyle != null) {
+        print("Warning: Dark map style missing, falling back to light style.");
+        styleToApply = _lightMapStyle;
+      } else if (currentThemeBrightness == Brightness.light &&
+          _darkMapStyle != null) {
+        print("Warning: Light map style missing, falling back to dark style.");
+        styleToApply = _darkMapStyle;
+      } else {
+        print(
+          "No suitable map style found for $currentThemeBrightness. Using default map.",
+        );
+      }
     }
-
 
     if (styleToApply != null) {
       try {
         await _mapController!.setMapStyle(styleToApply);
-        _currentMapBrightness = currentThemeBrightness; // Update tracked brightness
+        _currentMapBrightness =
+            currentThemeBrightness; // Update tracked brightness
         print("Map style applied successfully for $currentThemeBrightness.");
       } catch (e) {
         print("Error applying map style: $e");
         _currentMapBrightness = null;
       }
     } else {
-       try {
-          await _mapController!.setMapStyle(null); // Explicitly set default style
-          _currentMapBrightness = currentThemeBrightness; 
-          print("Applied default map style for $currentThemeBrightness.");
-       } catch (e) {
-          print("Error applying default map style: $e");
-          _currentMapBrightness = null;
-       }
+      try {
+        await _mapController!.setMapStyle(null); // Explicitly set default style
+        _currentMapBrightness = currentThemeBrightness;
+        print("Applied default map style for $currentThemeBrightness.");
+      } catch (e) {
+        print("Error applying default map style: $e");
+        _currentMapBrightness = null;
+      }
     }
   }
 
@@ -154,7 +164,7 @@ class _HomeState extends State<Home> {
     // Apply map style when dependencies change (includes theme changes from Provider)
     // Check if map controller exists before applying
     if (_mapController != null) {
-       _applyMapStyleBasedOnTheme();
+      _applyMapStyleBasedOnTheme();
     }
   }
 
@@ -193,15 +203,24 @@ class _HomeState extends State<Home> {
     final theme = Theme.of(context);
     final snackBar = SnackBar(
       content: Text(
-        message, textAlign: TextAlign.center,
+        message,
+        textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
-          color: _isGuest ? Colors.black87 : theme.colorScheme.onPrimary, // Adjust text color based on background
+          color:
+              _isGuest
+                  ? Colors.black87
+                  : theme
+                      .colorScheme
+                      .onPrimary, // Adjust text color based on background
         ),
       ),
       duration: const Duration(seconds: 3),
-      backgroundColor: _isGuest ? Colors.orangeAccent : theme.colorScheme.primary, // Use theme color
+      backgroundColor:
+          _isGuest
+              ? Colors.orangeAccent
+              : theme.colorScheme.primary, // Use theme color
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.only(bottom: 70.0, left: 20.0, right: 20.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
@@ -222,80 +241,103 @@ class _HomeState extends State<Home> {
   }
 
   void _onPredefinedFilterSelected(String filter) {
-     bool switchingToMap = filter == 'Map';
-     bool switchingFromMap = _selectedPredefinedFilter == 'Map' && filter != 'Map';
+    bool switchingToMap = filter == 'Map';
+    bool switchingFromMap =
+        _selectedPredefinedFilter == 'Map' && filter != 'Map';
 
-     setState(() {
-       _selectedPredefinedFilter = filter;
-       // Reset specialty filter only if switching away from Map to a non-Map list filter
-       // OR if selecting a predefined specialty filter directly
-       if (switchingFromMap || (filter != 'Map' && filter != 'Favorites' && filter != 'All')) {
-          _selectedSpecialtyFilter = null;
-       }
-       // If selecting a predefined specialty, clear the search text
-       if (filter != 'Map' && filter != 'Favorites' && filter != 'All') {
-          _searchController.clear(); // Clear search when a specialty chip is tapped
-       }
-     });
+    setState(() {
+      _selectedPredefinedFilter = filter;
+      // Reset specialty filter only if switching away from Map to a non-Map list filter
+      // OR if selecting a predefined specialty filter directly
+      if (switchingFromMap ||
+          (filter != 'Map' && filter != 'Favorites' && filter != 'All')) {
+        _selectedSpecialtyFilter = null;
+      }
+      // If selecting a predefined specialty, clear the search text
+      if (filter != 'Map' && filter != 'Favorites' && filter != 'All') {
+        _searchController
+            .clear(); // Clear search when a specialty chip is tapped
+      }
+    });
 
-     if (switchingToMap) {
-        // Fetch location when map is selected
-        _getCurrentLocation();
-        // Clear list filters when switching to map
-        setState(() { _filteredDoctors = []; });
-     } else {
-        // Filter list view if switching to a non-map filter
-        _filterDoctors();
-     }
+    if (switchingToMap) {
+      // Fetch location when map is selected
+      _getCurrentLocation();
+      // Clear list filters when switching to map
+      setState(() {
+        _filteredDoctors = [];
+      });
+    } else {
+      // Filter list view if switching to a non-map filter
+      _filterDoctors();
+    }
   }
 
   void _onSpecialtyFilterSelected(String? specialty) {
-     if (_selectedPredefinedFilter == 'Map') return; // Ignore if map is active
-     setState(() {
-       _selectedSpecialtyFilter = specialty;
-       // If a specialty is selected via dropdown, ensure 'All' or 'Favorites' chip is active visually
-       if (specialty != null && _selectedPredefinedFilter != 'Favorites') {
-          _selectedPredefinedFilter = 'All';
-       }
-       _searchController.clear(); // Clear search when specialty dropdown is used
-     });
-     _filterDoctors();
+    if (_selectedPredefinedFilter == 'Map') return; // Ignore if map is active
+    setState(() {
+      _selectedSpecialtyFilter = specialty;
+      // If a specialty is selected via dropdown, ensure 'All' or 'Favorites' chip is active visually
+      if (specialty != null && _selectedPredefinedFilter != 'Favorites') {
+        _selectedPredefinedFilter = 'All';
+      }
+      _searchController.clear(); // Clear search when specialty dropdown is used
+    });
+    _filterDoctors();
   }
 
   // --- List Filtering Logic ---
   void _filterDoctors() {
-    if (!mounted || _selectedPredefinedFilter == 'Map') return; // Don't filter if map is active
+    if (!mounted || _selectedPredefinedFilter == 'Map')
+      return; // Don't filter if map is active
 
     final lowerCaseQuery = _searchController.text.toLowerCase().trim();
-    List<Doctor> tempFilteredList = List.from(_doctors); // Start with the master list
+    List<Doctor> tempFilteredList = List.from(
+      _doctors,
+    ); // Start with the master list
 
     // 1. Apply Predefined Filter Chip (excluding 'Map', 'All')
-    if (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All' && _selectedPredefinedFilter != 'Map') {
+    if (_selectedPredefinedFilter != null &&
+        _selectedPredefinedFilter != 'All' &&
+        _selectedPredefinedFilter != 'Map') {
       if (_selectedPredefinedFilter == 'Favorites') {
-        tempFilteredList = tempFilteredList.where((doctor) => doctor.isFavorite).toList();
+        tempFilteredList =
+            tempFilteredList.where((doctor) => doctor.isFavorite).toList();
       } else {
         // Filter by specialty chip
-        tempFilteredList = tempFilteredList.where((doctor) =>
-            doctor.specialty.toLowerCase() == _selectedPredefinedFilter!.toLowerCase()).toList();
+        tempFilteredList =
+            tempFilteredList
+                .where(
+                  (doctor) =>
+                      doctor.specialty.toLowerCase() ==
+                      _selectedPredefinedFilter!.toLowerCase(),
+                )
+                .toList();
       }
     }
 
     // 2. Apply Dropdown Specialty Filter (Only if 'Favorites' chip is NOT active)
-    if (_selectedSpecialtyFilter != null && _selectedPredefinedFilter != 'Favorites') {
-      tempFilteredList = tempFilteredList.where((doctor) =>
-          doctor.specialty == _selectedSpecialtyFilter).toList();
+    if (_selectedSpecialtyFilter != null &&
+        _selectedPredefinedFilter != 'Favorites') {
+      tempFilteredList =
+          tempFilteredList
+              .where((doctor) => doctor.specialty == _selectedSpecialtyFilter)
+              .toList();
     }
 
     // 3. Apply Text Search Filter (applied last)
     if (lowerCaseQuery.isNotEmpty) {
       // Apply search only if a predefined specialty chip is NOT selected
-      if (_selectedPredefinedFilter == 'All' || _selectedPredefinedFilter == 'Favorites' || _selectedPredefinedFilter == null) {
-         tempFilteredList = tempFilteredList.where((doctor) {
-           final lowerCaseName = doctor.name.toLowerCase();
-           final lowerCaseSpecialty = doctor.specialty.toLowerCase();
-           return lowerCaseName.contains(lowerCaseQuery) ||
+      if (_selectedPredefinedFilter == 'All' ||
+          _selectedPredefinedFilter == 'Favorites' ||
+          _selectedPredefinedFilter == null) {
+        tempFilteredList =
+            tempFilteredList.where((doctor) {
+              final lowerCaseName = doctor.name.toLowerCase();
+              final lowerCaseSpecialty = doctor.specialty.toLowerCase();
+              return lowerCaseName.contains(lowerCaseQuery) ||
                   lowerCaseSpecialty.contains(lowerCaseQuery);
-         }).toList();
+            }).toList();
       }
     }
 
@@ -318,57 +360,79 @@ class _HomeState extends State<Home> {
       _userFavoriteIds = {};
     });
 
-    List<Doctor> previouslyFetchedDoctors = List.from(_doctors); // Keep old data temporarily
+    List<Doctor> previouslyFetchedDoctors = List.from(
+      _doctors,
+    ); // Keep old data temporarily
 
     try {
       // 1. Fetch User's Favorite IDs (only if logged in)
       Set<String> fetchedFavoriteIds = {};
       if (_loggedInUserId != null) {
         try {
-           DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!).get();
-           if (userDoc.exists && userDoc.data() != null) {
-              final data = userDoc.data() as Map<String, dynamic>;
-              if (data.containsKey('favoriteDoctorIds') && data['favoriteDoctorIds'] is List) {
-                 fetchedFavoriteIds = List<String>.from(data['favoriteDoctorIds']).toSet();
-              }
-           }
-        } catch (e) { print("Error fetching user favorites: $e"); /* Continue fetching doctors */ }
+          DocumentSnapshot userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(_loggedInUserId!)
+                  .get();
+          if (userDoc.exists && userDoc.data() != null) {
+            final data = userDoc.data() as Map<String, dynamic>;
+            if (data.containsKey('favoriteDoctorIds') &&
+                data['favoriteDoctorIds'] is List) {
+              fetchedFavoriteIds =
+                  List<String>.from(data['favoriteDoctorIds']).toSet();
+            }
+          }
+        } catch (e) {
+          print(
+            "Error fetching user favorites: $e",
+          ); /* Continue fetching doctors */
+        }
       }
 
       // 2. Fetch All Doctors
-      QuerySnapshot doctorSnapshot = await FirebaseFirestore.instance.collection('doctors').get();
+      QuerySnapshot doctorSnapshot =
+          await FirebaseFirestore.instance.collection('doctors').get();
 
       if (mounted) {
         // 3. Process Doctors and Merge Favorite Status
-        final List<Doctor> processedDoctors = doctorSnapshot.docs.map((doc) {
-          Doctor doctor = Doctor.fromFirestore(doc);
-          bool isFav = fetchedFavoriteIds.contains(doctor.id);
-          // Ensure all fields from your Doctor model are included here
-          return Doctor(
-             id: doctor.id, name: doctor.name, specialty: doctor.specialty,
-             address: doctor.address, phone: doctor.phone, imageUrl: doctor.imageUrl,
-             rating: doctor.rating,
-             location: doctor.location, bio: doctor.bio,
-             // workingHours: doctor.workingHours, // Add if you have this field
-             isFavorite: isFav,
-          );
-        }).toList();
+        final List<Doctor> processedDoctors =
+            doctorSnapshot.docs.map((doc) {
+              Doctor doctor = Doctor.fromFirestore(doc);
+              bool isFav = fetchedFavoriteIds.contains(doctor.id);
+              // Ensure all fields from your Doctor model are included here
+              return Doctor(
+                id: doctor.id,
+                name: doctor.name,
+                specialty: doctor.specialty,
+                address: doctor.address,
+                phone: doctor.phone,
+                imageUrl: doctor.imageUrl,
+                rating: doctor.rating,
+                location: doctor.location,
+                bio: doctor.bio,
+                // workingHours: doctor.workingHours, // Add if you have this field
+                isFavorite: isFav,
+              );
+            }).toList();
 
         // 4. Update State
         setState(() {
           _doctors = processedDoctors; // Update the master list
           _userFavoriteIds = fetchedFavoriteIds; // Update favorite IDs state
-          _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList(); // Update derived favorites list
+          _favoriteDoctors =
+              _doctors
+                  .where((d) => d.isFavorite)
+                  .toList(); // Update derived favorites list
           _isLoadingDoctors = false;
           _errorLoadingDoctors = null;
           // Apply filters only if map is not selected
           if (_selectedPredefinedFilter != 'Map') {
-             _filterDoctors();
+            _filterDoctors();
           } else {
-             // If map is selected, ensure _filteredDoctors is cleared or ignored
-             _filteredDoctors = [];
-             // Update map markers if map is active
-             // (Markers are rebuilt in _buildMapView based on _doctors)
+            // If map is selected, ensure _filteredDoctors is cleared or ignored
+            _filteredDoctors = [];
+            // Update map markers if map is active
+            // (Markers are rebuilt in _buildMapView based on _doctors)
           }
         });
       }
@@ -378,33 +442,54 @@ class _HomeState extends State<Home> {
         String errorMessage = 'Failed to load doctors.';
         if (e is FirebaseException) {
           errorMessage += ' (Code: ${e.code})';
-        } else if (e is FormatException || e is TypeError || e.toString().contains('toDouble')) {
-          errorMessage = 'Error processing doctor data. Please check data format.';
-          print("Data processing error likely related to Firestore data types.");
+        } else if (e is FormatException ||
+            e is TypeError ||
+            e.toString().contains('toDouble')) {
+          errorMessage =
+              'Error processing doctor data. Please check data format.';
+          print(
+            "Data processing error likely related to Firestore data types.",
+          );
         } else {
           errorMessage += ' Please try again.';
         }
         setState(() {
           _errorLoadingDoctors = errorMessage;
           _isLoadingDoctors = false;
-          _doctors = previouslyFetchedDoctors; // Revert to old data on error if available
+          _doctors =
+              previouslyFetchedDoctors; // Revert to old data on error if available
           _filteredDoctors = []; // Clear filtered list on error
-          _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList(); // Update based on potentially old data
+          _favoriteDoctors =
+              _doctors
+                  .where((d) => d.isFavorite)
+                  .toList(); // Update based on potentially old data
         });
       }
     }
   }
 
   // --- Toggle Favorite Status ---
-  Future<void> _toggleFavoriteStatus(String doctorId, bool currentIsFavorite) async {
+  Future<void> _toggleFavoriteStatus(
+    String doctorId,
+    bool currentIsFavorite,
+  ) async {
     if (_loggedInUserId == null || _togglingFavorite.contains(doctorId)) return;
     if (!mounted) return;
-    setState(() { _togglingFavorite.add(doctorId); });
+    setState(() {
+      _togglingFavorite.add(doctorId);
+    });
 
-    final userDocRef = FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!);
-    final updateData = currentIsFavorite
-        ? {'favoriteDoctorIds': FieldValue.arrayRemove([doctorId])}
-        : {'favoriteDoctorIds': FieldValue.arrayUnion([doctorId])};
+    final userDocRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_loggedInUserId!);
+    final updateData =
+        currentIsFavorite
+            ? {
+              'favoriteDoctorIds': FieldValue.arrayRemove([doctorId]),
+            }
+            : {
+              'favoriteDoctorIds': FieldValue.arrayUnion([doctorId]),
+            };
 
     try {
       await userDocRef.update(updateData);
@@ -417,25 +502,33 @@ class _HomeState extends State<Home> {
           _userFavoriteIds.remove(doctorId);
         }
 
-        List<Doctor> updatedDoctors = _doctors.map((doctor) {
-          if (doctor.id == doctorId) {
-            return Doctor( // Create a new instance with updated favorite status
-               id: doctor.id, name: doctor.name, specialty: doctor.specialty,
-               address: doctor.address, phone: doctor.phone, imageUrl: doctor.imageUrl,
-               rating: doctor.rating, location: doctor.location, bio: doctor.bio,
-               // workingHours: doctor.workingHours,
-               isFavorite: newFavoriteStatus,
-            );
-          }
-          return doctor;
-        }).toList();
+        List<Doctor> updatedDoctors =
+            _doctors.map((doctor) {
+              if (doctor.id == doctorId) {
+                return Doctor(
+                  // Create a new instance with updated favorite status
+                  id: doctor.id,
+                  name: doctor.name,
+                  specialty: doctor.specialty,
+                  address: doctor.address,
+                  phone: doctor.phone,
+                  imageUrl: doctor.imageUrl,
+                  rating: doctor.rating,
+                  location: doctor.location,
+                  bio: doctor.bio,
+                  // workingHours: doctor.workingHours,
+                  isFavorite: newFavoriteStatus,
+                );
+              }
+              return doctor;
+            }).toList();
 
         setState(() {
           _doctors = updatedDoctors;
           _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList();
           // Re-apply filters only if map is not selected
           if (_selectedPredefinedFilter != 'Map') {
-             _filterDoctors();
+            _filterDoctors();
           }
         });
       }
@@ -447,12 +540,14 @@ class _HomeState extends State<Home> {
           SnackBar(
             content: Text('Could not update favorites: ${e.toString()}'),
             behavior: SnackBarBehavior.floating,
-          )
+          ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() { _togglingFavorite.remove(doctorId); });
+        setState(() {
+          _togglingFavorite.remove(doctorId);
+        });
       }
     }
   }
@@ -461,34 +556,38 @@ class _HomeState extends State<Home> {
   Future<void> _handleLogout() async {
     if (!mounted) return;
     final theme = Theme.of(context);
-    bool confirmLogout = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(false)
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error), // Use theme error color
-              child: const Text('Logout'),
-              onPressed: () => Navigator.of(context).pop(true)
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+    bool confirmLogout =
+        await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirm Logout'),
+              content: const Text('Are you sure you want to logout?'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ), // Use theme error color
+                  child: const Text('Logout'),
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
 
     if (confirmLogout) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('loggedInUserId');
       if (userId != null) {
-         // Consider clearing other user-specific cache if needed
-          await prefs.remove(_prefsKeyAppointments + userId);
-          print("Local appointments cache cleared for user $userId.");
+        // Consider clearing other user-specific cache if needed
+        await prefs.remove(_prefsKeyAppointments + userId);
+        print("Local appointments cache cleared for user $userId.");
       }
       await prefs.remove('loggedInUserId');
       await prefs.setBool('isGuest', false); // Ensure guest mode is off
@@ -497,35 +596,49 @@ class _HomeState extends State<Home> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const InitLogin()),
-        (Route<dynamic> route) => false
+        (Route<dynamic> route) => false,
       );
     }
   }
 
   // --- Navigation ---
   void _onItemTapped(int index) {
-    setState(() { _selectedIndex = index; });
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   // --- Body Building Logic ---
   Widget _buildBody() {
     switch (_selectedIndex) {
-      case 0: return _homeScreenBody();
-      case 1: return _isGuest ? _guestModeNotice("view appointments") : const Appointments();
-      case 2: return _isGuest ? _guestModeNotice("view your profile") : const Profile();
-      default: return _homeScreenBody(); // Fallback to home
+      case 0:
+        return _homeScreenBody();
+      case 1:
+        return _isGuest
+            ? _guestModeNotice("view appointments")
+            : const Appointments();
+      case 2:
+        return _isGuest
+            ? _guestModeNotice("view your profile")
+            : const Profile();
+      default:
+        return _homeScreenBody(); // Fallback to home
     }
   }
 
   Widget _guestModeNotice(String action) {
-     final theme = Theme.of(context);
-     return Center(
+    final theme = Theme.of(context);
+    return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_off_outlined, size: 60, color: theme.disabledColor),
+            Icon(
+              Icons.person_off_outlined,
+              size: 60,
+              color: theme.disabledColor,
+            ),
             const SizedBox(height: 16),
             Text(
               'Please log in to $action.',
@@ -535,37 +648,42 @@ class _HomeState extends State<Home> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                 // Navigate to login screen and remove all previous routes
-                 Navigator.pushAndRemoveUntil(
-                   context,
-                   MaterialPageRoute(builder: (context) => const InitLogin()),
-                   (Route<dynamic> route) => false
-                 );
+                // Navigate to login screen and remove all previous routes
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InitLogin()),
+                  (Route<dynamic> route) => false,
+                );
               },
               child: const Text('Go to Login'),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
- // --- Builds the main content for the Home tab ---
+  // --- Builds the main content for the Home tab ---
   Widget _homeScreenBody() {
     return Column(
       children: [
         // --- Fixed Top Section (Search and Filters) ---
         Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
+          padding: const EdgeInsets.only(
+            left: 16.0,
+            right: 16.0,
+            top: 10.0,
+            bottom: 5.0,
+          ),
           child: _searchSection(), // Use theme-aware search section
         ),
         _buildPredefinedFilters(), // Use theme-aware filter chips
-
         // --- Conditional Content Area (Map or List) ---
         Expanded(
-          child: _selectedPredefinedFilter == 'Map'
-              ? _buildMapView() // Show Map View
-              : _buildListView(), // Show List View
+          child:
+              _selectedPredefinedFilter == 'Map'
+                  ? _buildMapView() // Show Map View
+                  : _buildListView(), // Show List View
         ),
       ],
     );
@@ -582,11 +700,18 @@ class _HomeState extends State<Home> {
           // Header for Main List
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(top: 15, left: 16, right: 16, bottom: 10),
+              padding: const EdgeInsets.only(
+                top: 15,
+                left: 16,
+                right: 16,
+                bottom: 10,
+              ),
               child: Text(
                 _getDoctorListTitle(),
                 // Use theme text style
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -623,12 +748,15 @@ class _HomeState extends State<Home> {
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied. Please enable them in app settings.');
+        throw Exception(
+          'Location permissions are permanently denied. Please enable them in app settings.',
+        );
       }
 
       // 3. Get current position
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.medium); // Use medium for balance
+        desiredAccuracy: LocationAccuracy.medium,
+      ); // Use medium for balance
 
       if (mounted) {
         setState(() {
@@ -661,7 +789,16 @@ class _HomeState extends State<Home> {
 
     // --- Handle Location Loading/Error ---
     if (_isLoadingLocation) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(color: theme.primaryColor), const SizedBox(height: 10), const Text("Getting your location...")],));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: theme.primaryColor),
+            const SizedBox(height: 10),
+            const Text("Getting your location..."),
+          ],
+        ),
+      );
     }
     if (_locationError != null) {
       return Center(
@@ -675,11 +812,17 @@ class _HomeState extends State<Home> {
               Text(
                 'Could not get location:',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: errorColor, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: errorColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 5),
               Text(
-                _locationError!.replaceFirst('Exception: ', ''), // Clean up message
+                _locationError!.replaceFirst(
+                  'Exception: ',
+                  '',
+                ), // Clean up message
                 textAlign: TextAlign.center,
                 style: TextStyle(color: errorColor),
               ),
@@ -694,18 +837,25 @@ class _HomeState extends State<Home> {
                 ),
               ),
               // Offer to open settings if permission denied permanently or service disabled
-              if (_locationError != null && (_locationError!.contains('permanently denied') || _locationError!.contains('disabled')))
-                 Padding(
-                   padding: const EdgeInsets.only(top: 10.0),
-                   child: TextButton(
-                     onPressed: _locationError!.contains('disabled')
-                        ? Geolocator.openLocationSettings // Open device location settings
-                        : Geolocator.openAppSettings,    // Open app-specific settings
-                     child: Text(_locationError!.contains('disabled')
-                        ? 'Open Location Settings'
-                        : 'Open App Settings'),
-                   ),
-                 ),
+              if (_locationError != null &&
+                  (_locationError!.contains('permanently denied') ||
+                      _locationError!.contains('disabled')))
+                Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: TextButton(
+                    onPressed:
+                        _locationError!.contains('disabled')
+                            ? Geolocator
+                                .openLocationSettings // Open device location settings
+                            : Geolocator
+                                .openAppSettings, // Open app-specific settings
+                    child: Text(
+                      _locationError!.contains('disabled')
+                          ? 'Open Location Settings'
+                          : 'Open App Settings',
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -714,37 +864,49 @@ class _HomeState extends State<Home> {
     // --- End Location Handling ---
 
     // Filter doctors who have a valid location
-   final doctorsWithLocation = _doctors.where((doc) {
-        return doc.location != null &&
-               doc.location!.latitude.isFinite &&
-               doc.location!.longitude.isFinite;
-    }).toList();
+    final doctorsWithLocation =
+        _doctors.where((doc) {
+          return doc.location != null &&
+              doc.location!.latitude.isFinite &&
+              doc.location!.longitude.isFinite;
+        }).toList();
 
     // Create map markers
-    final Set<Marker> markers = doctorsWithLocation.map((doctor) {
-      final lat = doctor.location!.latitude;
-      final lng = doctor.location!.longitude;
-      return Marker(
-        markerId: MarkerId(doctor.id),
-        position: LatLng(lat, lng),
-        infoWindow: InfoWindow(
-          title: doctor.name,
-          snippet: doctor.specialty,
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorDetails(doctorId: doctor.id)));
-          }
-        ),
-        // Consider using a custom marker or different hue based on theme?
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      );
-    }).toSet();
+    final Set<Marker> markers =
+        doctorsWithLocation.map((doctor) {
+          final lat = doctor.location!.latitude;
+          final lng = doctor.location!.longitude;
+          return Marker(
+            markerId: MarkerId(doctor.id),
+            position: LatLng(lat, lng),
+            infoWindow: InfoWindow(
+              title: doctor.name,
+              snippet: doctor.specialty,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DoctorDetails(doctorId: doctor.id),
+                  ),
+                );
+              },
+            ),
+            // Consider using a custom marker or different hue based on theme?
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueAzure,
+            ),
+          );
+        }).toSet();
 
     // --- Determine Initial Camera Position ---
     LatLng initialCameraTarget;
     double initialZoom;
 
     if (_currentUserPosition != null) {
-      initialCameraTarget = LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude);
+      initialCameraTarget = LatLng(
+        _currentUserPosition!.latitude,
+        _currentUserPosition!.longitude,
+      );
       initialZoom = 14.0;
     } else {
       // Fallback if no user location (e.g., center of US)
@@ -763,46 +925,53 @@ class _HomeState extends State<Home> {
       myLocationEnabled: true, // Show blue dot for user location
       myLocationButtonEnabled: true,
       zoomControlsEnabled: true,
-      mapToolbarEnabled: true, 
+      mapToolbarEnabled: true,
       onMapCreated: (GoogleMapController controller) async {
-
         _mapController = controller;
         print("Map created. Applying initial style...");
-        await _applyMapStyleBasedOnTheme(); 
+        await _applyMapStyleBasedOnTheme();
 
         if (!mounted) return;
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
-           print("Animating camera to user location on map creation.");
-           controller.animateCamera(
-             CameraUpdate.newLatLngZoom(
-               LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude),
-               14.0,
-             ),
-           );
+          print("Animating camera to user location on map creation.");
+          controller.animateCamera(
+            CameraUpdate.newLatLngZoom(
+              LatLng(
+                _currentUserPosition!.latitude,
+                _currentUserPosition!.longitude,
+              ),
+              14.0,
+            ),
+          );
         } else {
-           print("User location not available on map creation, using default position.");
+          print(
+            "User location not available on map creation, using default position.",
+          );
         }
       },
     );
   }
 
   String _getDoctorListTitle() {
-     // Determine the appropriate title based on the current filter state
-     bool isSearchActive = _searchController.text.isNotEmpty;
-     bool isSpecialtyFilterActive = _selectedSpecialtyFilter != null;
-     bool isPredefinedSpecialtyActive = _selectedPredefinedFilter != null &&
-                                        _selectedPredefinedFilter != 'All' &&
-                                        _selectedPredefinedFilter != 'Map' &&
-                                        _selectedPredefinedFilter != 'Favorites';
+    // Determine the appropriate title based on the current filter state
+    bool isSearchActive = _searchController.text.isNotEmpty;
+    bool isSpecialtyFilterActive = _selectedSpecialtyFilter != null;
+    bool isPredefinedSpecialtyActive =
+        _selectedPredefinedFilter != null &&
+        _selectedPredefinedFilter != 'All' &&
+        _selectedPredefinedFilter != 'Map' &&
+        _selectedPredefinedFilter != 'Favorites';
 
-     if (_selectedPredefinedFilter == 'Favorites') {
-        return 'Favorite Doctors';
-     }
-     if (isSearchActive || isSpecialtyFilterActive || isPredefinedSpecialtyActive) {
-        return 'Filtered Doctors';
-     }
-     return 'Available Doctors'; // Default title
+    if (_selectedPredefinedFilter == 'Favorites') {
+      return 'Favorite Doctors';
+    }
+    if (isSearchActive ||
+        isSpecialtyFilterActive ||
+        isPredefinedSpecialtyActive) {
+      return 'Filtered Doctors';
+    }
+    return 'Available Doctors'; // Default title
   }
 
   // --- Build Main Doctor List ---
@@ -811,7 +980,11 @@ class _HomeState extends State<Home> {
 
     if (_isLoadingDoctors && _doctors.isEmpty) {
       // Show loading indicator only if there's no previous data
-      return SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: theme.primaryColor)));
+      return SliverFillRemaining(
+        child: Center(
+          child: CircularProgressIndicator(color: theme.primaryColor),
+        ),
+      );
     }
     if (_errorLoadingDoctors != null && _doctors.isEmpty) {
       // Show error only if there's no previous data
@@ -820,29 +993,33 @@ class _HomeState extends State<Home> {
     // Check _filteredDoctors for emptiness AFTER handling loading/error for initial state
     if (!_isLoadingDoctors && _filteredDoctors.isEmpty) {
       if (_selectedPredefinedFilter == 'Favorites' && !_isGuest) {
-         return SliverToBoxAdapter(child: _buildEmptyFavoritesMessage());
+        return SliverToBoxAdapter(child: _buildEmptyFavoritesMessage());
       }
       // Show general empty message if filters active or no doctors exist at all
-      if (_selectedPredefinedFilter != 'All' || _selectedSpecialtyFilter != null || _searchController.text.isNotEmpty || _doctors.isEmpty) {
-         return SliverToBoxAdapter(child: _buildEmptyListWidget());
+      if (_selectedPredefinedFilter != 'All' ||
+          _selectedSpecialtyFilter != null ||
+          _searchController.text.isNotEmpty ||
+          _doctors.isEmpty) {
+        return SliverToBoxAdapter(child: _buildEmptyListWidget());
       }
       // If 'All' is selected, no filters active, but list is empty (should be rare if _doctors isn't empty)
-      return const SliverToBoxAdapter(child: SizedBox.shrink()); // Or show a generic "No doctors available"
+      return const SliverToBoxAdapter(
+        child: SizedBox.shrink(),
+      ); // Or show a generic "No doctors available"
     }
 
     // Build the list using _filteredDoctors
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final doctor = _filteredDoctors[index];
-          return DoctorListItem( // This widget should use CardTheme from main.dart
-            doctor: doctor,
-            onFavoriteToggle: _loggedInUserId != null ? _toggleFavoriteStatus : null,
-            isTogglingFavorite: _togglingFavorite.contains(doctor.id),
-          );
-        },
-        childCount: _filteredDoctors.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final doctor = _filteredDoctors[index];
+        return DoctorListItem(
+          // This widget should use CardTheme from main.dart
+          doctor: doctor,
+          onFavoriteToggle:
+              _loggedInUserId != null ? _toggleFavoriteStatus : null,
+          isTogglingFavorite: _togglingFavorite.contains(doctor.id),
+        );
+      }, childCount: _filteredDoctors.length),
     );
   }
 
@@ -869,10 +1046,10 @@ class _HomeState extends State<Home> {
               label: const Text('Retry'),
               onPressed: _fetchDoctors,
               style: ElevatedButton.styleFrom(
-                 backgroundColor: errorColor,
-                 foregroundColor: theme.colorScheme.onError,
+                backgroundColor: errorColor,
+                foregroundColor: theme.colorScheme.onError,
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -886,7 +1063,8 @@ class _HomeState extends State<Home> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
         child: Text(
-          _doctors.isEmpty && !_isLoadingDoctors // Check if master list is truly empty
+          _doctors.isEmpty &&
+                  !_isLoadingDoctors // Check if master list is truly empty
               ? 'No doctors found at the moment.'
               : 'No doctors match your current filters.',
           textAlign: TextAlign.center,
@@ -904,7 +1082,11 @@ class _HomeState extends State<Home> {
         child: Text(
           'You haven\'t added any favorite doctors yet.\nTap the heart icon on a doctor\'s profile to add them.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: theme.disabledColor, height: 1.4),
+          style: TextStyle(
+            fontSize: 16,
+            color: theme.disabledColor,
+            height: 1.4,
+          ),
         ),
       ),
     );
@@ -930,32 +1112,42 @@ class _HomeState extends State<Home> {
           // Determine label color based on selection and map state
           Color labelColor;
           if (isSelected) {
-             // Use secondary label style color if defined and not null, otherwise default
-             labelColor = chipTheme.secondaryLabelStyle?.color ?? Colors.white;
+            // Use secondary label style color if defined and not null, otherwise default
+            labelColor = chipTheme.secondaryLabelStyle?.color ?? Colors.white;
           } else if (mapFilterActive && filter != 'Map') {
-             labelColor = theme.disabledColor; // Dim if map active and not map chip
+            labelColor =
+                theme.disabledColor; // Dim if map active and not map chip
           } else {
-             // Use primary label style color if defined and not null, otherwise default
-             labelColor = chipTheme.labelStyle?.color ?? theme.textTheme.bodyLarge!.color!;
+            // Use primary label style color if defined and not null, otherwise default
+            labelColor =
+                chipTheme.labelStyle?.color ??
+                theme.textTheme.bodyLarge!.color!;
           }
 
           return FilterChip(
             label: Text(filter),
             selected: isSelected,
             onSelected: (selected) {
-              if (selected) { _onPredefinedFilterSelected(filter); }
+              if (selected) {
+                _onPredefinedFilterSelected(filter);
+              }
             },
-            showCheckmark: chipTheme.showCheckmark ?? false, // Use theme default
+            showCheckmark:
+                chipTheme.showCheckmark ?? false, // Use theme default
             selectedColor: chipTheme.selectedColor, // Use theme color
             checkmarkColor: chipTheme.checkmarkColor, // Use theme color
-            labelStyle: chipTheme.labelStyle?.copyWith( // Base style
-                color: labelColor, // Apply calculated color
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            labelStyle: chipTheme.labelStyle?.copyWith(
+              // Base style
+              color: labelColor, // Apply calculated color
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
             backgroundColor: chipTheme.backgroundColor, // Use theme color
             shape: chipTheme.shape, // Use theme shape
             side: chipTheme.side, // Use theme border side
-            elevation: isSelected ? (chipTheme.elevation ?? 2.0) : (chipTheme.pressElevation ?? 0.0),
+            elevation:
+                isSelected
+                    ? (chipTheme.elevation ?? 2.0)
+                    : (chipTheme.pressElevation ?? 0.0),
             pressElevation: chipTheme.pressElevation,
           );
         },
@@ -972,34 +1164,54 @@ class _HomeState extends State<Home> {
     final inputDecorationTheme = theme.inputDecorationTheme;
 
     // Define colors based on theme and map state
-    Color fillColor = mapFilterActive
-        ? (isDark ? Colors.grey.shade800.withOpacity(0.5) : Colors.grey.shade100) // More subtle when disabled
-        : inputDecorationTheme.fillColor ?? colorScheme.surface; // Use theme default or surface
-    Color hintColor = mapFilterActive
-        ? theme.disabledColor
-        : inputDecorationTheme.hintStyle?.color ?? theme.hintColor;
-    Color iconColor = mapFilterActive
-        ? theme.disabledColor
-        : inputDecorationTheme.prefixIconColor ?? theme.iconTheme.color ?? colorScheme.onSurfaceVariant;
+    Color fillColor =
+        mapFilterActive
+            ? (isDark
+                ? Colors.grey.shade800.withOpacity(0.5)
+                : Colors.grey.shade100) // More subtle when disabled
+            : inputDecorationTheme.fillColor ??
+                colorScheme.surface; // Use theme default or surface
+    Color hintColor =
+        mapFilterActive
+            ? theme.disabledColor
+            : inputDecorationTheme.hintStyle?.color ?? theme.hintColor;
+    Color iconColor =
+        mapFilterActive
+            ? theme.disabledColor
+            : inputDecorationTheme.prefixIconColor ??
+                theme.iconTheme.color ??
+                colorScheme.onSurfaceVariant;
     Color clearIconColor = theme.hintColor; // Usually greyish
     Color dividerColor = theme.dividerColor;
-    Color filterIconColor = mapFilterActive
-        ? theme.disabledColor
-        : _selectedSpecialtyFilter == null
-            ? (inputDecorationTheme.suffixIconColor ?? theme.iconTheme.color ?? colorScheme.onSurfaceVariant)
+    Color filterIconColor =
+        mapFilterActive
+            ? theme.disabledColor
+            : _selectedSpecialtyFilter == null
+            ? (inputDecorationTheme.suffixIconColor ??
+                theme.iconTheme.color ??
+                colorScheme.onSurfaceVariant)
             : colorScheme.primary; // Use primary color when filter active
 
     return TextField(
       controller: _searchController,
       enabled: !mapFilterActive,
-      style: TextStyle(color: mapFilterActive ? theme.disabledColor : null), // Dim text if map active
+      style: TextStyle(
+        color: mapFilterActive ? theme.disabledColor : null,
+      ), // Dim text if map active
       decoration: InputDecoration(
         // Apply theme defaults first, then override
         filled: inputDecorationTheme.filled ?? true,
         fillColor: fillColor, // Override fill color based on map state
-        contentPadding: inputDecorationTheme.contentPadding ?? const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-        hintText: mapFilterActive ? 'Map View Active' : 'Search Doctor or Specialty...',
-        hintStyle: inputDecorationTheme.hintStyle?.copyWith(color: hintColor) ?? TextStyle(color: hintColor, fontSize: 14),
+        contentPadding:
+            inputDecorationTheme.contentPadding ??
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+        hintText:
+            mapFilterActive
+                ? 'Map View Active'
+                : 'Search Doctor or Specialty...',
+        hintStyle:
+            inputDecorationTheme.hintStyle?.copyWith(color: hintColor) ??
+            TextStyle(color: hintColor, fontSize: 14),
         prefixIcon: Padding(
           padding: const EdgeInsets.only(left: 15, right: 10),
           child: Icon(Icons.search, size: 22, color: iconColor),
@@ -1012,17 +1224,23 @@ class _HomeState extends State<Home> {
               IconButton(
                 icon: Icon(Icons.clear, color: clearIconColor, size: 20),
                 tooltip: 'Clear Search',
-                onPressed: () { _searchController.clear(); },
+                onPressed: () {
+                  _searchController.clear();
+                },
                 splashRadius: 20,
                 padding: EdgeInsets.zero,
               )
             else
               const SizedBox(width: 48), // Placeholder to keep size consistent
-
             // Divider
             SizedBox(
-               height: 30,
-               child: VerticalDivider(color: dividerColor, indent: 5, endIndent: 5, thickness: 0.7),
+              height: 30,
+              child: VerticalDivider(
+                color: dividerColor,
+                indent: 5,
+                endIndent: 5,
+                thickness: 0.7,
+              ),
             ),
             // Specialty Filter Popup
             PopupMenuButton<String?>(
@@ -1034,54 +1252,88 @@ class _HomeState extends State<Home> {
               tooltip: mapFilterActive ? null : 'Filter by Specialty',
               enabled: !mapFilterActive, // Disable popup when map active
               onSelected: mapFilterActive ? null : _onSpecialtyFilterSelected,
-              itemBuilder: mapFilterActive
-                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] // No items if map active
-                  : (BuildContext context) {
-                      // Use theme for text style in popup
-                      final popupTextStyle = theme.textTheme.bodyLarge;
-                      final boldPopupTextStyle = popupTextStyle?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary);
+              itemBuilder:
+                  mapFilterActive
+                      ? (BuildContext context) =>
+                          <PopupMenuEntry<String?>>[] // No items if map active
+                      : (BuildContext context) {
+                        // Use theme for text style in popup
+                        final popupTextStyle = theme.textTheme.bodyLarge;
+                        final boldPopupTextStyle = popupTextStyle?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        );
 
-                      Set<String> specialties = _getUniqueSpecialties();
-                      List<PopupMenuEntry<String?>> menuItems = [];
-                      menuItems.add(
-                        PopupMenuItem<String?>(
-                          value: null, // Represents 'All Specialties'
-                          child: Text('All Specialties', style: _selectedSpecialtyFilter == null ? boldPopupTextStyle : popupTextStyle),
-                        ),
-                      );
-                      if (specialties.isNotEmpty) { menuItems.add(const PopupMenuDivider()); }
-                      var sortedSpecialties = specialties.toList()..sort();
-                      for (String specialty in sortedSpecialties) {
+                        Set<String> specialties = _getUniqueSpecialties();
+                        List<PopupMenuEntry<String?>> menuItems = [];
                         menuItems.add(
                           PopupMenuItem<String?>(
-                            value: specialty,
-                            child: Text(specialty, style: _selectedSpecialtyFilter == specialty ? boldPopupTextStyle : popupTextStyle),
+                            value: null, // Represents 'All Specialties'
+                            child: Text(
+                              'All Specialties',
+                              style:
+                                  _selectedSpecialtyFilter == null
+                                      ? boldPopupTextStyle
+                                      : popupTextStyle,
+                            ),
                           ),
                         );
-                      }
-                      return menuItems;
-                    },
+                        if (specialties.isNotEmpty) {
+                          menuItems.add(const PopupMenuDivider());
+                        }
+                        var sortedSpecialties = specialties.toList()..sort();
+                        for (String specialty in sortedSpecialties) {
+                          menuItems.add(
+                            PopupMenuItem<String?>(
+                              value: specialty,
+                              child: Text(
+                                specialty,
+                                style:
+                                    _selectedSpecialtyFilter == specialty
+                                        ? boldPopupTextStyle
+                                        : popupTextStyle,
+                              ),
+                            ),
+                          );
+                        }
+                        return menuItems;
+                      },
             ),
             const SizedBox(width: 8),
           ],
         ),
         // Use theme borders, potentially overriding disabled state
-        border: inputDecorationTheme.border ?? OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-        ),
-         enabledBorder: inputDecorationTheme.enabledBorder ?? OutlineInputBorder(
-           borderRadius: BorderRadius.circular(30),
-           borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-         ),
-         focusedBorder: inputDecorationTheme.focusedBorder ?? OutlineInputBorder(
-           borderRadius: BorderRadius.circular(30),
-           borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
-         ),
-         disabledBorder: inputDecorationTheme.disabledBorder ?? OutlineInputBorder( // Style when disabled (map active)
-           borderRadius: BorderRadius.circular(30),
-           borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.3)),
-        ),
+        border:
+            inputDecorationTheme.border ??
+            OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide(
+                color: theme.dividerColor.withOpacity(0.5),
+              ),
+            ),
+        enabledBorder:
+            inputDecorationTheme.enabledBorder ??
+            OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide(
+                color: theme.dividerColor.withOpacity(0.5),
+              ),
+            ),
+        focusedBorder:
+            inputDecorationTheme.focusedBorder ??
+            OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+            ),
+        disabledBorder:
+            inputDecorationTheme.disabledBorder ??
+            OutlineInputBorder(
+              // Style when disabled (map active)
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide(
+                color: theme.dividerColor.withOpacity(0.3),
+              ),
+            ),
       ),
     );
   }
@@ -1094,13 +1346,17 @@ class _HomeState extends State<Home> {
     return Scaffold(
       // AppBar uses AppBarTheme from main.dart
       appBar: AppBar(
-        title: const Text('Doctor Appointment'), // Text color from AppBarTheme.foregroundColor
+        title: const Text(
+          'Doctor Appointment',
+        ), // Text color from AppBarTheme.foregroundColor
         centerTitle: true,
         // elevation: handled by AppBarTheme
         actions: [
           if (!_isGuest && _loggedInUserId != null)
             IconButton(
-              icon: const Icon(Icons.logout_outlined), // Icon color from AppBarTheme.foregroundColor
+              icon: const Icon(
+                Icons.logout_outlined,
+              ), // Icon color from AppBarTheme.foregroundColor
               tooltip: 'Logout',
               onPressed: _handleLogout,
             ),
@@ -1112,8 +1368,14 @@ class _HomeState extends State<Home> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Appointments'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            label: 'Appointments',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
         ],
         currentIndex: _selectedIndex,
         // selectedItemColor, unselectedItemColor, backgroundColor, elevation handled by theme
