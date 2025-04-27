@@ -8,16 +8,15 @@ class ThemeProvider with ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
 
   ThemeProvider() {
-    _loadThemeMode(); // Load saved theme on initialization
+    loadThemeMode(); // Load saved theme on initialization
   }
-
   // Load theme preference from SharedPreferences
-  Future<void> _loadThemeMode() async {
+  Future<void> loadThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
     // Get saved index, default to system
     final int themeIndex = prefs.getInt(_themePrefKey) ?? ThemeMode.system.index;
     _themeMode = ThemeMode.values[themeIndex];
-    notifyListeners(); // Notify listeners after loading
+    notifyListeners();
   }
 
   // Set and save theme preference
