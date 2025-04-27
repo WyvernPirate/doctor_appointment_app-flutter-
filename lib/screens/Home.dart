@@ -43,7 +43,9 @@ class _HomeState extends State<Home> {
   Position? _currentUserPosition; // Holds user's location
   bool _isLoadingLocation = false; // Tracks location fetching
   String? _locationError; // Holds location-specific errors
+
   GoogleMapController? _mapController; 
+  String? _mapStyle;
 
   @override
   void initState() {
@@ -51,13 +53,14 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first;
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
-    _loadMapStyle();
+    rootBundle.loadString('assets/map_style.json').then((string) {
+      _mapStyle = string;
+    }).catchError((error){
+      print("Error loading map style: $error");
+    });
   }
 
-  String? _loadedMapStyle;
-  Future<void> _loadMapStyle() async {
-    _loadedMapStyle = await rootBundle.loadString('assets/map_style.json');
-  }
+  
 
   @override
   void dispose() {
@@ -508,7 +511,7 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // --- UPDATED: Builds the Google Map view part ---
+  // --- Builds the Google Map view ---
   Widget _buildMapView() {
     // --- Handle Location Loading/Error ---
     if (_isLoadingLocation) {
@@ -530,7 +533,6 @@ class _HomeState extends State<Home> {
               ),
               const SizedBox(height: 5),
               Text(
-                // Clean up the error message slightly
                 _locationError!.replaceFirst('Exception: ', ''),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
@@ -542,7 +544,6 @@ class _HomeState extends State<Home> {
                 onPressed: _getCurrentLocation, 
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
               ),
-              // Optionally add a button to open app settings for permission errors
               if (_locationError != null && (_locationError!.contains('permanently denied') || _locationError!.contains('disabled')))
                  Padding(
                    padding: const EdgeInsets.only(top: 10.0),
@@ -595,12 +596,11 @@ LatLng initialCameraTarget;
 
     if (_currentUserPosition != null) {
       initialCameraTarget = LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude);
-      initialZoom = 14.0; // Zoom in closer if user location is known
+      initialZoom = 14.0;
     } else {
-      // Absolute fallback (e.g., center of a country/region) if no user location
-      // You might want to adjust this default to your target region
-      initialCameraTarget = const LatLng(39.8283, -98.5795); // Center of US
-      initialZoom = 4.0; // Zoom out if using default
+      // Absolute fallback if no user location
+      initialCameraTarget = const LatLng(39.8283, -98.5795); // Center of Gaborone
+      initialZoom = 4.0; 
 
     }    return GoogleMap(
       initialCameraPosition: CameraPosition(
@@ -613,13 +613,14 @@ LatLng initialCameraTarget;
       myLocationButtonEnabled: true, // Show button to center on user
       zoomControlsEnabled: true,
       mapToolbarEnabled: true,
+
       // Get the controller when the map is created
       onMapCreated: (GoogleMapController controller) async {
         _mapController = controller;
 
-        if (_loadedMapStyle != null) {
+        if (_mapStyle != null) {
           try {
-            await controller.setMapStyle(_loadedMapStyle!);
+            await _mapController!.setMapStyle(_mapStyle!);
              print("Map style applied successfully in onMapCreated.");
           } catch (e) {
              print("Error applying map style in onMapCreated: $e");
