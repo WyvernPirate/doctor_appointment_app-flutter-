@@ -3,10 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart'; // Import Provider
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '/models/doctor.dart';
+import '/providers/theme_provider.dart'; // Import ThemeProvider
 import '/widgets/doctor_list_item.dart';
 import 'Appointments.dart';
 import 'DoctorDetails.dart';
@@ -21,53 +23,139 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  // --- User & Navigation State ---
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
   static const String _prefsKeyAppointments = 'user_appointments_cache';
+
+  // --- Search & Filtering State ---
   final TextEditingController _searchController = TextEditingController();
   List<Doctor> _filteredDoctors = [];
   String? _selectedSpecialtyFilter;
   String? _selectedPredefinedFilter;
   final List<String> _predefinedFilters = [
     'All', 'Favorites', 'Map', 'Dermatology', 'Cardiology', 'Pediatrics',
+    // Add more predefined specialties if needed
   ];
-  List<Doctor> _doctors = [];
-  List<Doctor> _favoriteDoctors = [];
+
+  // --- Doctor Data State ---
+  List<Doctor> _doctors = []; // Master list of all doctors
+  List<Doctor> _favoriteDoctors = []; // Derived list of favorites
   bool _isLoadingDoctors = true;
   String? _errorLoadingDoctors;
-  Set<String> _userFavoriteIds = {};
-  final Set<String> _togglingFavorite = {};
+  Set<String> _userFavoriteIds = {}; // IDs of user's favorite doctors
+  final Set<String> _togglingFavorite = {}; // Track doctors being toggled
 
-  // --- Location and Map ---
-  Position? _currentUserPosition; // Holds user's location
-  bool _isLoadingLocation = false; // Tracks location fetching
+  // --- Location and Map State ---
+  Position? _currentUserPosition; 
+  bool _isLoadingLocation = false; 
   String? _locationError; // Holds location-specific errors
-
-  GoogleMapController? _mapController; 
-  String? _mapStyle;
+  GoogleMapController? _mapController;
+  String? _lightMapStyle; // Style string for light theme
+  String? _darkMapStyle;  // Style string for dark theme
+  Brightness? _currentMapBrightness; 
 
   @override
   void initState() {
     super.initState();
-    _selectedPredefinedFilter = _predefinedFilters.first;
+    _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
-    rootBundle.loadString('lib/assets/map_style.json').then((string) {
-      _mapStyle = string;
-    }).catchError((error){
-      print("Error loading map style: $error");
-    });
+    _loadMapStyles(); 
   }
-
-  
 
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _mapController?.dispose(); // Dispose map controller
+    _mapController?.dispose(); 
     super.dispose();
+  }
+
+  // --- Load both map styles ---
+  Future<void> _loadMapStyles() async {
+    try {
+      _lightMapStyle = await rootBundle.loadString('lib/assets/map_style.json');
+      _darkMapStyle = await rootBundle.loadString('lib/assets/map_style_dark.json');
+      // Apply style if map is already created and context is available
+      if (mounted && _mapController != null) {
+         await _applyMapStyleBasedOnTheme();
+      }
+    } catch (e) {
+      print("Error loading map styles: $e");
+   
+    }
+  }
+
+  // ---Apply map style based on current theme ---
+  Future<void> _applyMapStyleBasedOnTheme() async {
+    // Ensure map controller, styles, and context are available
+    if (_mapController == null || !mounted || (_lightMapStyle == null && _darkMapStyle == null)) {
+      print("Map style application skipped: Controller null, not mounted, or styles not loaded.");
+      return;
+    }
+
+    final currentThemeBrightness = Theme.of(context).brightness;
+    if (_currentMapBrightness == currentThemeBrightness) {
+      print("Map style skipped: Brightness hasn't changed ($currentThemeBrightness).");
+      return;
+    }
+
+    print("Attempting to apply map style for theme: $currentThemeBrightness");
+
+    String? styleToApply;
+    if (currentThemeBrightness == Brightness.dark && _darkMapStyle != null) {
+      styleToApply = _darkMapStyle;
+      print("Selected dark map style.");
+    } else if (currentThemeBrightness == Brightness.light && _lightMapStyle != null) {
+      styleToApply = _lightMapStyle;
+      print("Selected light map style.");
+    } else {
+       // Fallback logic if one style is missing but the other exists
+       if (currentThemeBrightness == Brightness.dark && _lightMapStyle != null) {
+          print("Warning: Dark map style missing, falling back to light style.");
+          styleToApply = _lightMapStyle;
+       } else if (currentThemeBrightness == Brightness.light && _darkMapStyle != null) {
+          print("Warning: Light map style missing, falling back to dark style.");
+          styleToApply = _darkMapStyle;
+       } else {
+          print("No suitable map style found for $currentThemeBrightness. Using default map.");
+         
+       }
+    }
+
+
+    if (styleToApply != null) {
+      try {
+        await _mapController!.setMapStyle(styleToApply);
+        _currentMapBrightness = currentThemeBrightness; // Update tracked brightness
+        print("Map style applied successfully for $currentThemeBrightness.");
+      } catch (e) {
+        print("Error applying map style: $e");
+        _currentMapBrightness = null;
+      }
+    } else {
+       try {
+          await _mapController!.setMapStyle(null); // Explicitly set default style
+          _currentMapBrightness = currentThemeBrightness; 
+          print("Applied default map style for $currentThemeBrightness.");
+       } catch (e) {
+          print("Error applying default map style: $e");
+          _currentMapBrightness = null;
+       }
+    }
+  }
+
+  // --- NEW: Use didChangeDependencies to react to theme changes ---
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Apply map style when dependencies change (includes theme changes from Provider)
+    // Check if map controller exists before applying
+    if (_mapController != null) {
+       _applyMapStyleBasedOnTheme();
+    }
   }
 
   // --- Initialization and User Status ---
@@ -78,9 +166,10 @@ class _HomeState extends State<Home> {
       if (_loggedInUserId != null || _isGuest) {
         await _fetchDoctors(); // Fetch doctors initially
       } else {
+        // Handle case where neither guest nor logged in (shouldn't happen with InitLogin)
         setState(() {
           _isLoadingDoctors = false;
-          _errorLoadingDoctors = "Please log in to view doctors.";
+          _errorLoadingDoctors = "User status unclear. Please restart the app.";
         });
       }
     }
@@ -101,13 +190,18 @@ class _HomeState extends State<Home> {
   void _showWelcomeSnackBar() {
     if (!mounted) return;
     final message = _isGuest ? "Browsing as Guest" : "Welcome!";
+    final theme = Theme.of(context);
     final snackBar = SnackBar(
       content: Text(
         message, textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: _isGuest ? Colors.black87 : theme.colorScheme.onPrimary, // Adjust text color based on background
+        ),
       ),
       duration: const Duration(seconds: 3),
-      backgroundColor: _isGuest ? Colors.orangeAccent : Colors.blueAccent,
+      backgroundColor: _isGuest ? Colors.orangeAccent : theme.colorScheme.primary, // Use theme color
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.only(bottom: 70.0, left: 20.0, right: 20.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
@@ -117,7 +211,6 @@ class _HomeState extends State<Home> {
 
   // --- Specialties and Filtering ---
   Set<String> _getUniqueSpecialties() {
-    // Get unique specialties only from non-favorite doctors if needed, or all
     return _doctors.map((doctor) => doctor.specialty).toSet();
   }
 
@@ -134,16 +227,22 @@ class _HomeState extends State<Home> {
 
      setState(() {
        _selectedPredefinedFilter = filter;
-       // Reset specialty only if switching away from Map to a non-Map list filter
-       if (switchingFromMap || (filter != 'Map' && filter != 'Favorites')) {
+       // Reset specialty filter only if switching away from Map to a non-Map list filter
+       // OR if selecting a predefined specialty filter directly
+       if (switchingFromMap || (filter != 'Map' && filter != 'Favorites' && filter != 'All')) {
           _selectedSpecialtyFilter = null;
+       }
+       // If selecting a predefined specialty, clear the search text
+       if (filter != 'Map' && filter != 'Favorites' && filter != 'All') {
+          _searchController.clear(); // Clear search when a specialty chip is tapped
        }
      });
 
      if (switchingToMap) {
         // Fetch location when map is selected
         _getCurrentLocation();
-        // No need to call _filterDoctors for map view
+        // Clear list filters when switching to map
+        setState(() { _filteredDoctors = []; });
      } else {
         // Filter list view if switching to a non-map filter
         _filterDoctors();
@@ -154,7 +253,11 @@ class _HomeState extends State<Home> {
      if (_selectedPredefinedFilter == 'Map') return; // Ignore if map is active
      setState(() {
        _selectedSpecialtyFilter = specialty;
-       if (specialty != null) { _selectedPredefinedFilter = 'All'; }
+       // If a specialty is selected via dropdown, ensure 'All' or 'Favorites' chip is active visually
+       if (specialty != null && _selectedPredefinedFilter != 'Favorites') {
+          _selectedPredefinedFilter = 'All';
+       }
+       _searchController.clear(); // Clear search when specialty dropdown is used
      });
      _filterDoctors();
   }
@@ -166,18 +269,18 @@ class _HomeState extends State<Home> {
     final lowerCaseQuery = _searchController.text.toLowerCase().trim();
     List<Doctor> tempFilteredList = List.from(_doctors); // Start with the master list
 
-    // 1. Apply Predefined Filter (excluding 'Map')
+    // 1. Apply Predefined Filter Chip (excluding 'Map', 'All')
     if (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All' && _selectedPredefinedFilter != 'Map') {
       if (_selectedPredefinedFilter == 'Favorites') {
         tempFilteredList = tempFilteredList.where((doctor) => doctor.isFavorite).toList();
       } else {
-        // Filter by specialty
+        // Filter by specialty chip
         tempFilteredList = tempFilteredList.where((doctor) =>
             doctor.specialty.toLowerCase() == _selectedPredefinedFilter!.toLowerCase()).toList();
       }
     }
 
-    // 2. Apply Dropdown Specialty Filter (Only if 'Favorites' button is NOT active)
+    // 2. Apply Dropdown Specialty Filter (Only if 'Favorites' chip is NOT active)
     if (_selectedSpecialtyFilter != null && _selectedPredefinedFilter != 'Favorites') {
       tempFilteredList = tempFilteredList.where((doctor) =>
           doctor.specialty == _selectedSpecialtyFilter).toList();
@@ -185,12 +288,15 @@ class _HomeState extends State<Home> {
 
     // 3. Apply Text Search Filter (applied last)
     if (lowerCaseQuery.isNotEmpty) {
-      tempFilteredList = tempFilteredList.where((doctor) {
-        final lowerCaseName = doctor.name.toLowerCase();
-        final lowerCaseSpecialty = doctor.specialty.toLowerCase();
-        return lowerCaseName.contains(lowerCaseQuery) ||
-               lowerCaseSpecialty.contains(lowerCaseQuery);
-      }).toList();
+      // Apply search only if a predefined specialty chip is NOT selected
+      if (_selectedPredefinedFilter == 'All' || _selectedPredefinedFilter == 'Favorites' || _selectedPredefinedFilter == null) {
+         tempFilteredList = tempFilteredList.where((doctor) {
+           final lowerCaseName = doctor.name.toLowerCase();
+           final lowerCaseSpecialty = doctor.specialty.toLowerCase();
+           return lowerCaseName.contains(lowerCaseQuery) ||
+                  lowerCaseSpecialty.contains(lowerCaseQuery);
+         }).toList();
+      }
     }
 
     // Update the state variable that the main list view uses
@@ -216,16 +322,17 @@ class _HomeState extends State<Home> {
 
     try {
       // 1. Fetch User's Favorite IDs (only if logged in)
+      Set<String> fetchedFavoriteIds = {};
       if (_loggedInUserId != null) {
         try {
            DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!).get();
            if (userDoc.exists && userDoc.data() != null) {
               final data = userDoc.data() as Map<String, dynamic>;
               if (data.containsKey('favoriteDoctorIds') && data['favoriteDoctorIds'] is List) {
-                 _userFavoriteIds = List<String>.from(data['favoriteDoctorIds']).toSet();
+                 fetchedFavoriteIds = List<String>.from(data['favoriteDoctorIds']).toSet();
               }
            }
-        } catch (e) { print("Error fetching user favorites: $e"); }
+        } catch (e) { print("Error fetching user favorites: $e"); /* Continue fetching doctors */ }
       }
 
       // 2. Fetch All Doctors
@@ -235,14 +342,14 @@ class _HomeState extends State<Home> {
         // 3. Process Doctors and Merge Favorite Status
         final List<Doctor> processedDoctors = doctorSnapshot.docs.map((doc) {
           Doctor doctor = Doctor.fromFirestore(doc);
-          bool isFav = _userFavoriteIds.contains(doctor.id);
+          bool isFav = fetchedFavoriteIds.contains(doctor.id);
           // Ensure all fields from your Doctor model are included here
           return Doctor(
              id: doctor.id, name: doctor.name, specialty: doctor.specialty,
              address: doctor.address, phone: doctor.phone, imageUrl: doctor.imageUrl,
-             rating: doctor.rating,  // Make sure reviews is in your model
+             rating: doctor.rating,
              location: doctor.location, bio: doctor.bio,
-            // workingHours: doctor.workingHours, // Make sure workingHours is in your model
+             // workingHours: doctor.workingHours, // Add if you have this field
              isFavorite: isFav,
           );
         }).toList();
@@ -250,6 +357,7 @@ class _HomeState extends State<Home> {
         // 4. Update State
         setState(() {
           _doctors = processedDoctors; // Update the master list
+          _userFavoriteIds = fetchedFavoriteIds; // Update favorite IDs state
           _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList(); // Update derived favorites list
           _isLoadingDoctors = false;
           _errorLoadingDoctors = null;
@@ -258,7 +366,9 @@ class _HomeState extends State<Home> {
              _filterDoctors();
           } else {
              // If map is selected, ensure _filteredDoctors is cleared or ignored
-             _filteredDoctors = []; // Or simply don't call _filterDoctors
+             _filteredDoctors = [];
+             // Update map markers if map is active
+             // (Markers are rebuilt in _buildMapView based on _doctors)
           }
         });
       }
@@ -268,14 +378,9 @@ class _HomeState extends State<Home> {
         String errorMessage = 'Failed to load doctors.';
         if (e is FirebaseException) {
           errorMessage += ' (Code: ${e.code})';
-        } else if (e is FormatException ||
-            e is TypeError ||
-            e.toString().contains('toDouble')) {
-          errorMessage =
-              'Error processing doctor data. Please check data format.';
-          print(
-            "Data processing error likely related to Firestore data types.",
-          );
+        } else if (e is FormatException || e is TypeError || e.toString().contains('toDouble')) {
+          errorMessage = 'Error processing doctor data. Please check data format.';
+          print("Data processing error likely related to Firestore data types.");
         } else {
           errorMessage += ' Please try again.';
         }
@@ -283,7 +388,7 @@ class _HomeState extends State<Home> {
           _errorLoadingDoctors = errorMessage;
           _isLoadingDoctors = false;
           _doctors = previouslyFetchedDoctors; // Revert to old data on error if available
-          _filteredDoctors = [];
+          _filteredDoctors = []; // Clear filtered list on error
           _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList(); // Update based on potentially old data
         });
       }
@@ -304,21 +409,27 @@ class _HomeState extends State<Home> {
     try {
       await userDocRef.update(updateData);
       if (mounted) {
-        currentIsFavorite ? _userFavoriteIds.remove(doctorId) : _userFavoriteIds.add(doctorId);
+        // Update local state immediately for responsiveness
+        final newFavoriteStatus = !currentIsFavorite;
+        if (newFavoriteStatus) {
+          _userFavoriteIds.add(doctorId);
+        } else {
+          _userFavoriteIds.remove(doctorId);
+        }
+
         List<Doctor> updatedDoctors = _doctors.map((doctor) {
           if (doctor.id == doctorId) {
-            // Ensure all fields are included when creating the new Doctor instance
-            return Doctor(
+            return Doctor( // Create a new instance with updated favorite status
                id: doctor.id, name: doctor.name, specialty: doctor.specialty,
                address: doctor.address, phone: doctor.phone, imageUrl: doctor.imageUrl,
-               rating: doctor.rating,  // Make sure reviews is included
-               location: doctor.location, bio: doctor.bio,
-              // workingHours: doctor.workingHours, // Make sure workingHours is included
-               isFavorite: !currentIsFavorite,
+               rating: doctor.rating, location: doctor.location, bio: doctor.bio,
+               // workingHours: doctor.workingHours,
+               isFavorite: newFavoriteStatus,
             );
           }
           return doctor;
         }).toList();
+
         setState(() {
           _doctors = updatedDoctors;
           _favoriteDoctors = _doctors.where((d) => d.isFavorite).toList();
@@ -331,7 +442,13 @@ class _HomeState extends State<Home> {
     } catch (e) {
       print("Error toggling favorite: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update favorites: ${e.toString()}')));
+        // Revert local state change on error? Optional, depends on desired UX
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not update favorites: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          )
+        );
       }
     } finally {
       if (mounted) {
@@ -342,6 +459,8 @@ class _HomeState extends State<Home> {
 
   // --- Logout ---
   Future<void> _handleLogout() async {
+    if (!mounted) return;
+    final theme = Theme.of(context);
     bool confirmLogout = await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -349,8 +468,15 @@ class _HomeState extends State<Home> {
           title: const Text('Confirm Logout'),
           content: const Text('Are you sure you want to logout?'),
           actions: <Widget>[
-            TextButton(child: const Text('Cancel'), onPressed: () => Navigator.of(context).pop(false)),
-            TextButton(child: const Text('Logout'), onPressed: () => Navigator.of(context).pop(true)),
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false)
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error), // Use theme error color
+              child: const Text('Logout'),
+              onPressed: () => Navigator.of(context).pop(true)
+            ),
           ],
         );
       },
@@ -360,13 +486,19 @@ class _HomeState extends State<Home> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('loggedInUserId');
       if (userId != null) {
-         await prefs.remove(_prefsKeyAppointments + userId);
-         print("Local appointments cache cleared for user $userId.");
+         // Consider clearing other user-specific cache if needed
+          await prefs.remove(_prefsKeyAppointments + userId);
+          print("Local appointments cache cleared for user $userId.");
       }
       await prefs.remove('loggedInUserId');
-      await prefs.setBool('isGuest', false);
+      await prefs.setBool('isGuest', false); // Ensure guest mode is off
       if (!mounted) return;
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const InitLogin()), (Route<dynamic> route) => false);
+      // Navigate to login screen and remove all previous routes
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const InitLogin()),
+        (Route<dynamic> route) => false
+      );
     }
   }
 
@@ -381,27 +513,35 @@ class _HomeState extends State<Home> {
       case 0: return _homeScreenBody();
       case 1: return _isGuest ? _guestModeNotice("view appointments") : const Appointments();
       case 2: return _isGuest ? _guestModeNotice("view your profile") : const Profile();
-      default: return _homeScreenBody();
+      default: return _homeScreenBody(); // Fallback to home
     }
   }
 
   Widget _guestModeNotice(String action) {
+     final theme = Theme.of(context);
      return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.person_off, size: 60, color: Colors.grey),
+            Icon(Icons.person_off_outlined, size: 60, color: theme.disabledColor),
             const SizedBox(height: 16),
             Text(
               'Please log in to $action.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: theme.disabledColor),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () { Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const InitLogin())); },
+              onPressed: () {
+                 // Navigate to login screen and remove all previous routes
+                 Navigator.pushAndRemoveUntil(
+                   context,
+                   MaterialPageRoute(builder: (context) => const InitLogin()),
+                   (Route<dynamic> route) => false
+                 );
+              },
               child: const Text('Go to Login'),
             )
           ],
@@ -414,14 +554,14 @@ class _HomeState extends State<Home> {
   Widget _homeScreenBody() {
     return Column(
       children: [
-        // --- Fixed Top Section ---
+        // --- Fixed Top Section (Search and Filters) ---
         Padding(
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 5.0),
-          child: _searchSection(),
+          child: _searchSection(), // Use theme-aware search section
         ),
-        _buildPredefinedFilters(),
+        _buildPredefinedFilters(), // Use theme-aware filter chips
 
-        // --- Conditional Content Area ---
+        // --- Conditional Content Area (Map or List) ---
         Expanded(
           child: _selectedPredefinedFilter == 'Map'
               ? _buildMapView() // Show Map View
@@ -430,12 +570,13 @@ class _HomeState extends State<Home> {
       ],
     );
   }
-  
 
   // Builds the scrollable list view part
   Widget _buildListView() {
+    final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: _fetchDoctors,
+      color: theme.primaryColor, // Use theme color for indicator
       child: CustomScrollView(
         slivers: <Widget>[
           // Header for Main List
@@ -444,7 +585,8 @@ class _HomeState extends State<Home> {
               padding: const EdgeInsets.only(top: 15, left: 16, right: 16, bottom: 10),
               child: Text(
                 _getDoctorListTitle(),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                // Use theme text style
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -456,7 +598,8 @@ class _HomeState extends State<Home> {
       ),
     );
   }
-  // --- NEW: Get User Location ---
+
+  // --- Get User Location ---
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
     setState(() {
@@ -480,19 +623,19 @@ class _HomeState extends State<Home> {
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied, we cannot request permissions.');
+        throw Exception('Location permissions are permanently denied. Please enable them in app settings.');
       }
 
       // 3. Get current position
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high); // Or .medium for less battery usage
+          desiredAccuracy: LocationAccuracy.medium); // Use medium for balance
 
       if (mounted) {
         setState(() {
           _currentUserPosition = position;
           _isLoadingLocation = false;
         });
-        // Animate map to the new location
+        // Animate map to the new location if controller is ready
         _mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(
             LatLng(position.latitude, position.longitude),
@@ -513,9 +656,12 @@ class _HomeState extends State<Home> {
 
   // --- Builds the Google Map view ---
   Widget _buildMapView() {
+    final theme = Theme.of(context);
+    final errorColor = theme.colorScheme.error;
+
     // --- Handle Location Loading/Error ---
     if (_isLoadingLocation) {
-      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 10), Text("Getting your location...")],));
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(color: theme.primaryColor), const SizedBox(height: 10), const Text("Getting your location...")],));
     }
     if (_locationError != null) {
       return Center(
@@ -524,31 +670,34 @@ class _HomeState extends State<Home> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.location_off, color: Colors.red, size: 40),
+              Icon(Icons.location_off_outlined, color: errorColor, size: 40),
               const SizedBox(height: 10),
               Text(
                 'Could not get location:',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                style: TextStyle(color: errorColor, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 5),
               Text(
-                _locationError!.replaceFirst('Exception: ', ''),
+                _locationError!.replaceFirst('Exception: ', ''), // Clean up message
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: errorColor),
               ),
               const SizedBox(height: 15),
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-                onPressed: _getCurrentLocation, 
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                onPressed: _getCurrentLocation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: errorColor, // Use error color for button
+                  foregroundColor: theme.colorScheme.onError,
+                ),
               ),
+              // Offer to open settings if permission denied permanently or service disabled
               if (_locationError != null && (_locationError!.contains('permanently denied') || _locationError!.contains('disabled')))
                  Padding(
                    padding: const EdgeInsets.only(top: 10.0),
                    child: TextButton(
-                     // Decide action based on error type
                      onPressed: _locationError!.contains('disabled')
                         ? Geolocator.openLocationSettings // Open device location settings
                         : Geolocator.openAppSettings,    // Open app-specific settings
@@ -563,9 +712,9 @@ class _HomeState extends State<Home> {
       );
     }
     // --- End Location Handling ---
-    // Filter doctors who have a valid location 
+
+    // Filter doctors who have a valid location
    final doctorsWithLocation = _doctors.where((doc) {
-        // Check if location is not null AND latitude/longitude are valid numbers
         return doc.location != null &&
                doc.location!.latitude.isFinite &&
                doc.location!.longitude.isFinite;
@@ -585,24 +734,26 @@ class _HomeState extends State<Home> {
             Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorDetails(doctorId: doctor.id)));
           }
         ),
+        // Consider using a custom marker or different hue based on theme?
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
       );
     }).toSet();
 
     // --- Determine Initial Camera Position ---
-    // Use user's location if available, otherwise a default
-LatLng initialCameraTarget;
+    LatLng initialCameraTarget;
     double initialZoom;
 
     if (_currentUserPosition != null) {
       initialCameraTarget = LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude);
       initialZoom = 14.0;
     } else {
-      // Absolute fallback if no user location
-      initialCameraTarget = const LatLng(39.8283, -98.5795); // Center of Gaborone
-      initialZoom = 4.0; 
+      // Fallback if no user location (e.g., center of US)
+      initialCameraTarget = const LatLng(39.8283, -98.5795);
+      initialZoom = 4.0;
+    }
 
-    }    return GoogleMap(
+    // --- Map Widget ---
+    return GoogleMap(
       initialCameraPosition: CameraPosition(
         target: initialCameraTarget,
         zoom: initialZoom,
@@ -610,17 +761,18 @@ LatLng initialCameraTarget;
       markers: markers,
       mapType: MapType.normal,
       myLocationEnabled: true, // Show blue dot for user location
-      myLocationButtonEnabled: true, // Show button to center on user
+      myLocationButtonEnabled: true,
       zoomControlsEnabled: true,
-      mapToolbarEnabled: true,
-
-      // Get the controller when the map is created
+      mapToolbarEnabled: true, 
       onMapCreated: (GoogleMapController controller) async {
-        _mapController = controller;
 
-        if (_mapStyle != null) {
+        _mapController = controller;
+        print("Map created. Applying initial style...");
+        await _applyMapStyleBasedOnTheme(); 
+
+        if (_loadMapStyles() != null) {
           try {
-            await _mapController!.setMapStyle(_mapStyle!);
+            await _mapController!.setMapStyle(_loadMapStyles()! as String?);
              print("Map style applied successfully in onMapCreated.");
           } catch (e) {
              print("Error applying map style in onMapCreated: $e");
@@ -628,62 +780,72 @@ LatLng initialCameraTarget;
         } else {
            print("Map style not loaded yet when map was created.");
         }
-
         if (!mounted) return;
-
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
+           print("Animating camera to user location on map creation.");
            controller.animateCamera(
              CameraUpdate.newLatLngZoom(
                LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude),
                14.0,
              ),
            );
+        } else {
+           print("User location not available on map creation, using default position.");
         }
       },
     );
   }
 
   String _getDoctorListTitle() {
-     // Title doesn't apply when map is shown, but we keep the logic
-     bool isAnyFilterActive = _searchController.text.isNotEmpty ||
-                              _selectedSpecialtyFilter != null ||
-                              (_selectedPredefinedFilter != null && _selectedPredefinedFilter != 'All' && _selectedPredefinedFilter != 'Map');
+     // Determine the appropriate title based on the current filter state
+     bool isSearchActive = _searchController.text.isNotEmpty;
+     bool isSpecialtyFilterActive = _selectedSpecialtyFilter != null;
+     bool isPredefinedSpecialtyActive = _selectedPredefinedFilter != null &&
+                                        _selectedPredefinedFilter != 'All' &&
+                                        _selectedPredefinedFilter != 'Map' &&
+                                        _selectedPredefinedFilter != 'Favorites';
+
      if (_selectedPredefinedFilter == 'Favorites') {
         return 'Favorite Doctors';
      }
-     // Don't show 'Filtered Doctors' if only 'Map' was previously selected
-     if (isAnyFilterActive) {
+     if (isSearchActive || isSpecialtyFilterActive || isPredefinedSpecialtyActive) {
         return 'Filtered Doctors';
      }
-     return 'Available Doctors';
+     return 'Available Doctors'; // Default title
   }
 
   // --- Build Main Doctor List ---
   Widget _buildSliverDoctorList() {
+    final theme = Theme.of(context);
+
     if (_isLoadingDoctors && _doctors.isEmpty) {
-      return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+      // Show loading indicator only if there's no previous data
+      return SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: theme.primaryColor)));
     }
     if (_errorLoadingDoctors != null && _doctors.isEmpty) {
+      // Show error only if there's no previous data
       return SliverFillRemaining(child: _buildErrorWidget());
     }
-    // Check _filteredDoctors for emptiness
-    if (_filteredDoctors.isEmpty) {
+    // Check _filteredDoctors for emptiness AFTER handling loading/error for initial state
+    if (!_isLoadingDoctors && _filteredDoctors.isEmpty) {
       if (_selectedPredefinedFilter == 'Favorites' && !_isGuest) {
          return SliverToBoxAdapter(child: _buildEmptyFavoritesMessage());
       }
-      // Show general empty message if filters active or no doctors exist
+      // Show general empty message if filters active or no doctors exist at all
       if (_selectedPredefinedFilter != 'All' || _selectedSpecialtyFilter != null || _searchController.text.isNotEmpty || _doctors.isEmpty) {
          return SliverToBoxAdapter(child: _buildEmptyListWidget());
       }
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
+      // If 'All' is selected, no filters active, but list is empty (should be rare if _doctors isn't empty)
+      return const SliverToBoxAdapter(child: SizedBox.shrink()); // Or show a generic "No doctors available"
     }
+
     // Build the list using _filteredDoctors
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final doctor = _filteredDoctors[index];
-          return DoctorListItem(
+          return DoctorListItem( // This widget should use CardTheme from main.dart
             doctor: doctor,
             onFavoriteToggle: _loggedInUserId != null ? _toggleFavoriteStatus : null,
             isTogglingFavorite: _togglingFavorite.contains(doctor.id),
@@ -696,24 +858,30 @@ LatLng initialCameraTarget;
 
   // --- Helper Widgets for List States ---
   Widget _buildErrorWidget() {
+    final theme = Theme.of(context);
+    final errorColor = theme.colorScheme.error;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, color: Colors.red[700], size: 50),
+            Icon(Icons.error_outline, color: errorColor, size: 50),
             const SizedBox(height: 10),
             Text(
               _errorLoadingDoctors ?? 'An unknown error occurred.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red[700], fontSize: 16),
+              style: TextStyle(color: errorColor, fontSize: 16),
             ),
             const SizedBox(height: 10),
             ElevatedButton.icon(
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               onPressed: _fetchDoctors,
+              style: ElevatedButton.styleFrom(
+                 backgroundColor: errorColor,
+                 foregroundColor: theme.colorScheme.onError,
+              ),
             )
           ],
         ),
@@ -722,38 +890,41 @@ LatLng initialCameraTarget;
   }
 
   Widget _buildEmptyListWidget() {
-    // Message shown when filters result in an empty list
+    final theme = Theme.of(context);
+    // Message shown when filters result in an empty list or no doctors initially
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
         child: Text(
-          _doctors.isEmpty
-              ? 'No doctors found at the moment.' 
+          _doctors.isEmpty && !_isLoadingDoctors // Check if master list is truly empty
+              ? 'No doctors found at the moment.'
               : 'No doctors match your current filters.',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
+          style: TextStyle(fontSize: 16, color: theme.disabledColor),
         ),
       ),
     );
   }
 
-  // --- Helper for Empty Favorites Message ---
   Widget _buildEmptyFavoritesMessage() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
       child: Center(
         child: Text(
-          'You haven\'t added any favorite doctors yet.',
+          'You haven\'t added any favorite doctors yet.\nTap the heart icon on a doctor\'s profile to add them.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+          style: TextStyle(fontSize: 16, color: theme.disabledColor, height: 1.4),
         ),
       ),
     );
   }
 
-  // Builds the horizontal list of predefined filter chips
+  // Builds the horizontal list of predefined filter chips (Theme Aware)
   Widget _buildPredefinedFilters() {
     bool mapFilterActive = _selectedPredefinedFilter == 'Map';
+    final theme = Theme.of(context); // Get theme data
+    final chipTheme = theme.chipTheme; // Get chip theme data
 
     return Container(
       height: 50,
@@ -765,51 +936,83 @@ LatLng initialCameraTarget;
         itemBuilder: (context, index) {
           final filter = _predefinedFilters[index];
           final isSelected = filter == _selectedPredefinedFilter;
+
+          // Determine label color based on selection and map state
+          Color labelColor;
+          if (isSelected) {
+             // Use secondary label style color if defined and not null, otherwise default
+             labelColor = chipTheme.secondaryLabelStyle?.color ?? Colors.white;
+          } else if (mapFilterActive && filter != 'Map') {
+             labelColor = theme.disabledColor; // Dim if map active and not map chip
+          } else {
+             // Use primary label style color if defined and not null, otherwise default
+             labelColor = chipTheme.labelStyle?.color ?? theme.textTheme.bodyLarge!.color!;
+          }
+
           return FilterChip(
             label: Text(filter),
             selected: isSelected,
             onSelected: (selected) {
               if (selected) { _onPredefinedFilterSelected(filter); }
             },
-            showCheckmark: false,
-            selectedColor: Theme.of(context).primaryColor.withOpacity(0.9),
-            checkmarkColor: Colors.white,
-            labelStyle: TextStyle(
-              color: isSelected
-                  ? Colors.white
-                  : mapFilterActive && filter != 'Map'
-                      ? Colors.grey.shade500
-                      : Theme.of(context).textTheme.bodyLarge?.color,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            showCheckmark: chipTheme.showCheckmark ?? false, // Use theme default
+            selectedColor: chipTheme.selectedColor, // Use theme color
+            checkmarkColor: chipTheme.checkmarkColor, // Use theme color
+            labelStyle: chipTheme.labelStyle?.copyWith( // Base style
+                color: labelColor, // Apply calculated color
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
-            backgroundColor: Colors.grey.shade200,
-            shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade300)),
-            elevation: isSelected ? 2 : 0,
+            backgroundColor: chipTheme.backgroundColor, // Use theme color
+            shape: chipTheme.shape, // Use theme shape
+            side: chipTheme.side, // Use theme border side
+            elevation: isSelected ? (chipTheme.elevation ?? 2.0) : (chipTheme.pressElevation ?? 0.0),
+            pressElevation: chipTheme.pressElevation,
           );
         },
       ),
     );
   }
 
-  // --- Search Section ---
+  // --- Search Section (Theme Aware) ---
   Widget _searchSection() {
     bool mapFilterActive = _selectedPredefinedFilter == 'Map';
+    final theme = Theme.of(context); // Get theme
+    final colorScheme = theme.colorScheme; // Get color scheme
+    final isDark = theme.brightness == Brightness.dark;
+    final inputDecorationTheme = theme.inputDecorationTheme;
+
+    // Define colors based on theme and map state
+    Color fillColor = mapFilterActive
+        ? (isDark ? Colors.grey.shade800.withOpacity(0.5) : Colors.grey.shade100) // More subtle when disabled
+        : inputDecorationTheme.fillColor ?? colorScheme.surface; // Use theme default or surface
+    Color hintColor = mapFilterActive
+        ? theme.disabledColor
+        : inputDecorationTheme.hintStyle?.color ?? theme.hintColor;
+    Color iconColor = mapFilterActive
+        ? theme.disabledColor
+        : inputDecorationTheme.prefixIconColor ?? theme.iconTheme.color ?? colorScheme.onSurfaceVariant;
+    Color clearIconColor = theme.hintColor; // Usually greyish
+    Color dividerColor = theme.dividerColor;
+    Color filterIconColor = mapFilterActive
+        ? theme.disabledColor
+        : _selectedSpecialtyFilter == null
+            ? (inputDecorationTheme.suffixIconColor ?? theme.iconTheme.color ?? colorScheme.onSurfaceVariant)
+            : colorScheme.primary; // Use primary color when filter active
 
     return TextField(
       controller: _searchController,
-      enabled: !mapFilterActive, // Disable TextField when map is active
-      style: TextStyle(color: mapFilterActive ? Colors.grey : null),
+      enabled: !mapFilterActive,
+      style: TextStyle(color: mapFilterActive ? theme.disabledColor : null), // Dim text if map active
       decoration: InputDecoration(
-        filled: true,
-        fillColor: mapFilterActive ? Colors.grey.shade100 : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+        // Apply theme defaults first, then override
+        filled: inputDecorationTheme.filled ?? true,
+        fillColor: fillColor, // Override fill color based on map state
+        contentPadding: inputDecorationTheme.contentPadding ?? const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
         hintText: mapFilterActive ? 'Map View Active' : 'Search Doctor or Specialty...',
-        hintStyle: TextStyle(
-            color: mapFilterActive ? Colors.grey.shade500 : const Color(0xffDDDADA),
-            fontSize: 14),
+        hintStyle: inputDecorationTheme.hintStyle?.copyWith(color: hintColor) ?? TextStyle(color: hintColor, fontSize: 14),
         prefixIcon: Padding(
           padding: const EdgeInsets.only(left: 15, right: 10),
-          child: Icon(Icons.search, size: 22, color: mapFilterActive ? Colors.grey : null),
+          child: Icon(Icons.search, size: 22, color: iconColor),
         ),
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
@@ -817,39 +1020,43 @@ LatLng initialCameraTarget;
             // Clear button
             if (_searchController.text.isNotEmpty && !mapFilterActive)
               IconButton(
-                icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                icon: Icon(Icons.clear, color: clearIconColor, size: 20),
                 tooltip: 'Clear Search',
                 onPressed: () { _searchController.clear(); },
+                splashRadius: 20,
+                padding: EdgeInsets.zero,
               )
-            else if (mapFilterActive)
-              const SizedBox(width: 48),
+            else
+              const SizedBox(width: 48), // Placeholder to keep size consistent
 
             // Divider
             SizedBox(
                height: 30,
-               child: VerticalDivider(color: mapFilterActive ? Colors.grey.shade300 : Colors.grey, indent: 5, endIndent: 5, thickness: 0.7),
+               child: VerticalDivider(color: dividerColor, indent: 5, endIndent: 5, thickness: 0.7),
             ),
             // Specialty Filter Popup
             PopupMenuButton<String?>(
               icon: Icon(
-                Icons.filter_list, size: 24,
-                color: mapFilterActive
-                    ? Colors.grey.shade400 
-                    : _selectedSpecialtyFilter == null
-                        ? Colors.grey
-                        : Theme.of(context).primaryColor,
+                Icons.filter_list_outlined, // Use outlined version
+                size: 24,
+                color: filterIconColor,
               ),
               tooltip: mapFilterActive ? null : 'Filter by Specialty',
-              onSelected: mapFilterActive ? null : _onSpecialtyFilterSelected, // Disable selection
+              enabled: !mapFilterActive, // Disable popup when map active
+              onSelected: mapFilterActive ? null : _onSpecialtyFilterSelected,
               itemBuilder: mapFilterActive
-                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] 
+                  ? (BuildContext context) => <PopupMenuEntry<String?>>[] // No items if map active
                   : (BuildContext context) {
+                      // Use theme for text style in popup
+                      final popupTextStyle = theme.textTheme.bodyLarge;
+                      final boldPopupTextStyle = popupTextStyle?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary);
+
                       Set<String> specialties = _getUniqueSpecialties();
                       List<PopupMenuEntry<String?>> menuItems = [];
                       menuItems.add(
                         PopupMenuItem<String?>(
-                          value: null,
-                          child: Text('All Specialties', style: TextStyle(fontWeight: _selectedSpecialtyFilter == null ? FontWeight.bold : FontWeight.normal)),
+                          value: null, // Represents 'All Specialties'
+                          child: Text('All Specialties', style: _selectedSpecialtyFilter == null ? boldPopupTextStyle : popupTextStyle),
                         ),
                       );
                       if (specialties.isNotEmpty) { menuItems.add(const PopupMenuDivider()); }
@@ -858,7 +1065,7 @@ LatLng initialCameraTarget;
                         menuItems.add(
                           PopupMenuItem<String?>(
                             value: specialty,
-                            child: Text(specialty, style: TextStyle(fontWeight: _selectedSpecialtyFilter == specialty ? FontWeight.bold : FontWeight.normal)),
+                            child: Text(specialty, style: _selectedSpecialtyFilter == specialty ? boldPopupTextStyle : popupTextStyle),
                           ),
                         );
                       }
@@ -868,21 +1075,22 @@ LatLng initialCameraTarget;
             const SizedBox(width: 8),
           ],
         ),
-        border: OutlineInputBorder(
+        // Use theme borders, potentially overriding disabled state
+        border: inputDecorationTheme.border ?? OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
         ),
-         enabledBorder: OutlineInputBorder(
+         enabledBorder: inputDecorationTheme.enabledBorder ?? OutlineInputBorder(
            borderRadius: BorderRadius.circular(30),
-           borderSide: BorderSide(color: Colors.grey.shade300),
+           borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
          ),
-         focusedBorder: OutlineInputBorder(
+         focusedBorder: inputDecorationTheme.focusedBorder ?? OutlineInputBorder(
            borderRadius: BorderRadius.circular(30),
-           borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+           borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
          ),
-         disabledBorder: OutlineInputBorder( // Style when disabled
+         disabledBorder: inputDecorationTheme.disabledBorder ?? OutlineInputBorder( // Style when disabled (map active)
            borderRadius: BorderRadius.circular(30),
-           borderSide: BorderSide(color: Colors.grey.shade200),
+           borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.3)),
         ),
       ),
     );
@@ -891,15 +1099,18 @@ LatLng initialCameraTarget;
   // --- Main Build Method ---
   @override
   Widget build(BuildContext context) {
+    // Theme data is fetched here or within specific build methods as needed
+    // Scaffold, AppBar, BottomNavigationBar rely heavily on the global theme set in main.dart
     return Scaffold(
+      // AppBar uses AppBarTheme from main.dart
       appBar: AppBar(
-        title: const Text('Doctor Appointment'),
+        title: const Text('Doctor Appointment'), // Text color from AppBarTheme.foregroundColor
         centerTitle: true,
-        elevation: 1,
+        // elevation: handled by AppBarTheme
         actions: [
           if (!_isGuest && _loggedInUserId != null)
             IconButton(
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Icons.logout_outlined), // Icon color from AppBarTheme.foregroundColor
               tooltip: 'Logout',
               onPressed: _handleLogout,
             ),
@@ -907,6 +1118,7 @@ LatLng initialCameraTarget;
         ],
       ),
       body: _buildBody(),
+      // BottomNavigationBar uses BottomNavigationBarThemeData from main.dart
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
@@ -914,11 +1126,11 @@ LatLng initialCameraTarget;
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey[600],
-        showUnselectedLabels: true,
+        // selectedItemColor, unselectedItemColor, backgroundColor, elevation handled by theme
+        showUnselectedLabels: true, // Keep labels visible
         onTap: _onItemTapped,
+        // type: BottomNavigationBarType.fixed, // Usually default, uncomment if needed
       ),
     );
-  } 
+  }
 }
