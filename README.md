@@ -61,6 +61,6 @@ This project is a Flutter-based mobile application that allows patients to searc
 ## Project Structure
 
 ## TODO
-encrypt passwords and email
-
-implement a local db for doctors
+- fix initial loading of the map styles whenever the filter button is clicked
+- add lat and long to the doctor database so to be able to pick
+- allow map intergration on tapping
