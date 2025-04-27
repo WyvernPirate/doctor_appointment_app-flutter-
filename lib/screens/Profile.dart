@@ -1,4 +1,7 @@
 // lib/screens/Profile.dart
+import 'package:provider/provider.dart';
+
+import '../providers/theme_provider.dart';
 import '/models/DatabaseHelper.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -393,28 +396,91 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- Handle Settings Menu Selection ---
-  void _handleProfileAction(ProfileAction selectedAction) {
+   void _handleProfileAction(ProfileAction selectedAction) {
     switch (selectedAction) {
       case ProfileAction.editProfile:
-        // TODO: Navigate to Edit Profile Screen
-       
         _showSnackBar('Edit Profile selected (Not Implemented)');
         break;
       case ProfileAction.appearance:
-        // TODO: Navigate to Appearance Settings Screen or show a dialog
-       
-        _showSnackBar('Appearance selected (Not Implemented)');
+        // *** MODIFIED: Show the appearance dialog ***
+        _showAppearanceDialog();
         break;
       case ProfileAction.location:
-        // TODO: Navigate to Location Settings Screen or manage permissions
-      
         _showSnackBar('Location Settings selected (Not Implemented)');
         break;
       case ProfileAction.deleteAccount:
-        _showDeleteConfirmationDialog(); // Show confirmation first
+        _showDeleteConfirmationDialog();
         break;
     }
   }
+
+  // --- NEW: Method to show Appearance Dialog ---
+  Future<void> _showAppearanceDialog() async {
+    if (!mounted) return;
+
+    // Get the current theme provider (listen: false because we only call methods)
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final currentMode = themeProvider.themeMode; // Get current mode
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        // Use a StatefulWidget builder to manage the radio button state locally if needed,
+        // but for simplicity, we can directly call the provider on change.
+        return AlertDialog(
+          title: const Text('Appearance'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min, // Prevent excessive height
+            children: <Widget>[
+              RadioListTile<ThemeMode>(
+                title: const Text('Light'),
+                value: ThemeMode.light,
+                groupValue: currentMode, // Use the mode fetched from provider
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    themeProvider.setThemeMode(value);
+                    Navigator.of(context).pop(); // Close dialog
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('Dark'),
+                value: ThemeMode.dark,
+                groupValue: currentMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    themeProvider.setThemeMode(value);
+                    Navigator.of(context).pop(); // Close dialog
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('System Default'),
+                value: ThemeMode.system,
+                groupValue: currentMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    themeProvider.setThemeMode(value);
+                    Navigator.of(context).pop(); // Close dialog
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+     // No need to call setState here, Provider handles the update
+  }
+
 
   // --- Delete Confirmation Dialog ---
   Future<void> _showDeleteConfirmationDialog() async {
