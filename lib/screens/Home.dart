@@ -770,16 +770,6 @@ class _HomeState extends State<Home> {
         print("Map created. Applying initial style...");
         await _applyMapStyleBasedOnTheme(); 
 
-        if (_loadMapStyles() != null) {
-          try {
-            await _mapController!.setMapStyle(_loadMapStyles()! as String?);
-             print("Map style applied successfully in onMapCreated.");
-          } catch (e) {
-             print("Error applying map style in onMapCreated: $e");
-          }
-        } else {
-           print("Map style not loaded yet when map was created.");
-        }
         if (!mounted) return;
         // If user location was already available when map created, move camera
         if (_currentUserPosition != null) {
