@@ -5,6 +5,12 @@
       { "visibility": "off" }
     ]
   },
+  { 
+    "featureType": "poi.school",
+    "stylers": [
+      { "visibility": "off" }
+    ]
+  },
   {
     "featureType": "transit",
     "stylers": [
