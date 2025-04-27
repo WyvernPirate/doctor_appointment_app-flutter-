@@ -3,12 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:provider/provider.dart'; // Import Provider
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart' show rootBundle;
-
 import '/models/doctor.dart';
-import '/providers/theme_provider.dart'; // Import ThemeProvider
 import '/widgets/doctor_list_item.dart';
 import 'Appointments.dart';
 import 'DoctorDetails.dart';
@@ -40,20 +37,20 @@ class _HomeState extends State<Home> {
   ];
 
   // --- Doctor Data State ---
-  List<Doctor> _doctors = []; // Master list of all doctors
-  List<Doctor> _favoriteDoctors = []; // Derived list of favorites
+  List<Doctor> _doctors = []; 
+  List<Doctor> _favoriteDoctors = []; 
   bool _isLoadingDoctors = true;
   String? _errorLoadingDoctors;
-  Set<String> _userFavoriteIds = {}; // IDs of user's favorite doctors
-  final Set<String> _togglingFavorite = {}; // Track doctors being toggled
+  Set<String> _userFavoriteIds = {}; 
+  final Set<String> _togglingFavorite = {}; 
 
   // --- Location and Map State ---
   Position? _currentUserPosition;
   bool _isLoadingLocation = false;
-  String? _locationError; // Holds location-specific errors
+  String? _locationError; 
   GoogleMapController? _mapController;
-  String? _lightMapStyle; // Style string for light theme
-  String? _darkMapStyle; // Style string for dark theme
+  String? _lightMapStyle; 
+  String? _darkMapStyle; 
   Brightness? _currentMapBrightness;
 
   @override
@@ -157,12 +154,10 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // --- NEW: Use didChangeDependencies to react to theme changes ---
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Apply map style when dependencies change (includes theme changes from Provider)
-    // Check if map controller exists before applying
     if (_mapController != null) {
       _applyMapStyleBasedOnTheme();
     }
@@ -174,9 +169,8 @@ class _HomeState extends State<Home> {
     if (mounted) {
       _showWelcomeSnackBar();
       if (_loggedInUserId != null || _isGuest) {
-        await _fetchDoctors(); // Fetch doctors initially
+        await _fetchDoctors(); // Fetch doctors
       } else {
-        // Handle case where neither guest nor logged in (shouldn't happen with InitLogin)
         setState(() {
           _isLoadingDoctors = false;
           _errorLoadingDoctors = "User status unclear. Please restart the app.";
@@ -213,7 +207,7 @@ class _HomeState extends State<Home> {
                   ? Colors.black87
                   : theme
                       .colorScheme
-                      .onPrimary, // Adjust text color based on background
+                      .onPrimary, 
         ),
       ),
       duration: const Duration(seconds: 3),
@@ -247,16 +241,13 @@ class _HomeState extends State<Home> {
 
     setState(() {
       _selectedPredefinedFilter = filter;
-      // Reset specialty filter only if switching away from Map to a non-Map list filter
-      // OR if selecting a predefined specialty filter directly
       if (switchingFromMap ||
           (filter != 'Map' && filter != 'Favorites' && filter != 'All')) {
         _selectedSpecialtyFilter = null;
       }
-      // If selecting a predefined specialty, clear the search text
       if (filter != 'Map' && filter != 'Favorites' && filter != 'All') {
         _searchController
-            .clear(); // Clear search when a specialty chip is tapped
+            .clear(); 
       }
     });
 
@@ -268,16 +259,14 @@ class _HomeState extends State<Home> {
         _filteredDoctors = [];
       });
     } else {
-      // Filter list view if switching to a non-map filter
       _filterDoctors();
     }
   }
 
   void _onSpecialtyFilterSelected(String? specialty) {
-    if (_selectedPredefinedFilter == 'Map') return; // Ignore if map is active
+    if (_selectedPredefinedFilter == 'Map') return; 
     setState(() {
       _selectedSpecialtyFilter = specialty;
-      // If a specialty is selected via dropdown, ensure 'All' or 'Favorites' chip is active visually
       if (specialty != null && _selectedPredefinedFilter != 'Favorites') {
         _selectedPredefinedFilter = 'All';
       }
@@ -288,15 +277,14 @@ class _HomeState extends State<Home> {
 
   // --- List Filtering Logic ---
   void _filterDoctors() {
-    if (!mounted || _selectedPredefinedFilter == 'Map')
-      return; // Don't filter if map is active
+    if (!mounted || _selectedPredefinedFilter == 'Map') return;
 
     final lowerCaseQuery = _searchController.text.toLowerCase().trim();
     List<Doctor> tempFilteredList = List.from(
       _doctors,
     ); // Start with the master list
 
-    // 1. Apply Predefined Filter Chip (excluding 'Map', 'All')
+    //  Apply Predefined Filter Chip (excluding 'Map', 'All')
     if (_selectedPredefinedFilter != null &&
         _selectedPredefinedFilter != 'All' &&
         _selectedPredefinedFilter != 'Map') {
@@ -316,7 +304,7 @@ class _HomeState extends State<Home> {
       }
     }
 
-    // 2. Apply Dropdown Specialty Filter (Only if 'Favorites' chip is NOT active)
+    //  Apply Dropdown Specialty Filter 
     if (_selectedSpecialtyFilter != null &&
         _selectedPredefinedFilter != 'Favorites') {
       tempFilteredList =
@@ -325,7 +313,7 @@ class _HomeState extends State<Home> {
               .toList();
     }
 
-    // 3. Apply Text Search Filter (applied last)
+    // Apply Text Search Filter (applied last)
     if (lowerCaseQuery.isNotEmpty) {
       // Apply search only if a predefined specialty chip is NOT selected
       if (_selectedPredefinedFilter == 'All' ||
@@ -353,8 +341,7 @@ class _HomeState extends State<Home> {
     setState(() {
       _isLoadingDoctors = true;
       _errorLoadingDoctors = null;
-      // Don't clear _doctors immediately if we want map to show old data while loading
-      // _doctors = [];
+     
       _filteredDoctors = [];
       _favoriteDoctors = [];
       _userFavoriteIds = {};
@@ -385,21 +372,21 @@ class _HomeState extends State<Home> {
         } catch (e) {
           print(
             "Error fetching user favorites: $e",
-          ); /* Continue fetching doctors */
+          ); 
         }
       }
 
-      // 2. Fetch All Doctors
+      // Fetch All Doctors
       QuerySnapshot doctorSnapshot =
           await FirebaseFirestore.instance.collection('doctors').get();
 
       if (mounted) {
-        // 3. Process Doctors and Merge Favorite Status
+        // Process Doctors and Merge Favorite Status
         final List<Doctor> processedDoctors =
             doctorSnapshot.docs.map((doc) {
               Doctor doctor = Doctor.fromFirestore(doc);
               bool isFav = fetchedFavoriteIds.contains(doctor.id);
-              // Ensure all fields from your Doctor model are included here
+
               return Doctor(
                 id: doctor.id,
                 name: doctor.name,
@@ -410,15 +397,15 @@ class _HomeState extends State<Home> {
                 rating: doctor.rating,
                 location: doctor.location,
                 bio: doctor.bio,
-                // workingHours: doctor.workingHours, // Add if you have this field
+                // workingHours: doctor.workingHours, 
                 isFavorite: isFav,
               );
             }).toList();
 
-        // 4. Update State
+        //  Update State
         setState(() {
           _doctors = processedDoctors; // Update the master list
-          _userFavoriteIds = fetchedFavoriteIds; // Update favorite IDs state
+          _userFavoriteIds = fetchedFavoriteIds; 
           _favoriteDoctors =
               _doctors
                   .where((d) => d.isFavorite)
@@ -431,8 +418,6 @@ class _HomeState extends State<Home> {
           } else {
             // If map is selected, ensure _filteredDoctors is cleared or ignored
             _filteredDoctors = [];
-            // Update map markers if map is active
-            // (Markers are rebuilt in _buildMapView based on _doctors)
           }
         });
       }
@@ -590,7 +575,7 @@ class _HomeState extends State<Home> {
         print("Local appointments cache cleared for user $userId.");
       }
       await prefs.remove('loggedInUserId');
-      await prefs.setBool('isGuest', false); // Ensure guest mode is off
+      await prefs.setBool('isGuest', false); 
       if (!mounted) return;
       // Navigate to login screen and remove all previous routes
       Navigator.pushAndRemoveUntil(
@@ -667,7 +652,7 @@ class _HomeState extends State<Home> {
   Widget _homeScreenBody() {
     return Column(
       children: [
-        // --- Fixed Top Section (Search and Filters) ---
+        // --- Top Section (Search and Filters) ---
         Padding(
           padding: const EdgeInsets.only(
             left: 16.0,
@@ -675,10 +660,9 @@ class _HomeState extends State<Home> {
             top: 10.0,
             bottom: 5.0,
           ),
-          child: _searchSection(), // Use theme-aware search section
+          child: _searchSection(), 
         ),
-        _buildPredefinedFilters(), // Use theme-aware filter chips
-        // --- Conditional Content Area (Map or List) ---
+        _buildPredefinedFilters(), 
         Expanded(
           child:
               _selectedPredefinedFilter == 'Map'
@@ -715,7 +699,7 @@ class _HomeState extends State<Home> {
               ),
             ),
           ),
-          // Main Doctor List (Handles all display including favorites via filter)
+          // Main Doctor List 
           _buildSliverDoctorList(),
           // Bottom Padding
           const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -733,13 +717,13 @@ class _HomeState extends State<Home> {
     });
 
     try {
-      // 1. Check if location services are enabled
+      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         throw Exception('Location services are disabled.');
       }
 
-      // 2. Check permissions
+      // Check permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -753,10 +737,10 @@ class _HomeState extends State<Home> {
         );
       }
 
-      // 3. Get current position
+      // Get current position
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
-      ); // Use medium for balance
+      ); 
 
       if (mounted) {
         setState(() {
@@ -767,7 +751,7 @@ class _HomeState extends State<Home> {
         _mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(
             LatLng(position.latitude, position.longitude),
-            14.0, // Zoom in closer when user location is found
+            14.0, 
           ),
         );
       }
@@ -782,7 +766,7 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // --- Builds the Google Map view ---
+  // --- Google Map view ---
   Widget _buildMapView() {
     final theme = Theme.of(context);
     final errorColor = theme.colorScheme.error;
@@ -848,7 +832,7 @@ class _HomeState extends State<Home> {
                             ? Geolocator
                                 .openLocationSettings // Open device location settings
                             : Geolocator
-                                .openAppSettings, // Open app-specific settings
+                                .openAppSettings, 
                     child: Text(
                       _locationError!.contains('disabled')
                           ? 'Open Location Settings'
@@ -861,7 +845,6 @@ class _HomeState extends State<Home> {
         ),
       );
     }
-    // --- End Location Handling ---
 
     // Filter doctors who have a valid location
     final doctorsWithLocation =
@@ -891,7 +874,6 @@ class _HomeState extends State<Home> {
                 );
               },
             ),
-            // Consider using a custom marker or different hue based on theme?
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueAzure,
             ),
@@ -909,7 +891,7 @@ class _HomeState extends State<Home> {
       );
       initialZoom = 14.0;
     } else {
-      // Fallback if no user location (e.g., center of US)
+      // Fallback if no user location 
       initialCameraTarget = const LatLng(39.8283, -98.5795);
       initialZoom = 4.0;
     }
@@ -1002,7 +984,7 @@ class _HomeState extends State<Home> {
           _doctors.isEmpty) {
         return SliverToBoxAdapter(child: _buildEmptyListWidget());
       }
-      // If 'All' is selected, no filters active, but list is empty (should be rare if _doctors isn't empty)
+      // If 'All' is selected, no filters active
       return const SliverToBoxAdapter(
         child: SizedBox.shrink(),
       ); // Or show a generic "No doctors available"
@@ -1092,12 +1074,11 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // Builds the horizontal list of predefined filter chips (Theme Aware)
+  // Builds the horizontal list of predefined filter chips 
   Widget _buildPredefinedFilters() {
     bool mapFilterActive = _selectedPredefinedFilter == 'Map';
     final theme = Theme.of(context); // Get theme data
-    final chipTheme = theme.chipTheme; // Get chip theme data
-
+    final chipTheme = theme.chipTheme; 
     return Container(
       height: 50,
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
@@ -1112,13 +1093,12 @@ class _HomeState extends State<Home> {
           // Determine label color based on selection and map state
           Color labelColor;
           if (isSelected) {
-            // Use secondary label style color if defined and not null, otherwise default
+           
             labelColor = chipTheme.secondaryLabelStyle?.color ?? Colors.white;
           } else if (mapFilterActive && filter != 'Map') {
             labelColor =
                 theme.disabledColor; // Dim if map active and not map chip
           } else {
-            // Use primary label style color if defined and not null, otherwise default
             labelColor =
                 chipTheme.labelStyle?.color ??
                 theme.textTheme.bodyLarge!.color!;
@@ -1155,11 +1135,11 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // --- Search Section (Theme Aware) ---
+  // --- Search Section ---
   Widget _searchSection() {
     bool mapFilterActive = _selectedPredefinedFilter == 'Map';
     final theme = Theme.of(context); // Get theme
-    final colorScheme = theme.colorScheme; // Get color scheme
+    final colorScheme = theme.colorScheme; 
     final isDark = theme.brightness == Brightness.dark;
     final inputDecorationTheme = theme.inputDecorationTheme;
 
@@ -1168,9 +1148,9 @@ class _HomeState extends State<Home> {
         mapFilterActive
             ? (isDark
                 ? Colors.grey.shade800.withOpacity(0.5)
-                : Colors.grey.shade100) // More subtle when disabled
+                : Colors.grey.shade100) 
             : inputDecorationTheme.fillColor ??
-                colorScheme.surface; // Use theme default or surface
+                colorScheme.surface; 
     Color hintColor =
         mapFilterActive
             ? theme.disabledColor
@@ -1181,7 +1161,7 @@ class _HomeState extends State<Home> {
             : inputDecorationTheme.prefixIconColor ??
                 theme.iconTheme.color ??
                 colorScheme.onSurfaceVariant;
-    Color clearIconColor = theme.hintColor; // Usually greyish
+    Color clearIconColor = theme.hintColor; 
     Color dividerColor = theme.dividerColor;
     Color filterIconColor =
         mapFilterActive
@@ -1199,9 +1179,8 @@ class _HomeState extends State<Home> {
         color: mapFilterActive ? theme.disabledColor : null,
       ), // Dim text if map active
       decoration: InputDecoration(
-        // Apply theme defaults first, then override
         filled: inputDecorationTheme.filled ?? true,
-        fillColor: fillColor, // Override fill color based on map state
+        fillColor: fillColor, 
         contentPadding:
             inputDecorationTheme.contentPadding ??
             const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
@@ -1231,7 +1210,7 @@ class _HomeState extends State<Home> {
                 padding: EdgeInsets.zero,
               )
             else
-              const SizedBox(width: 48), // Placeholder to keep size consistent
+              const SizedBox(width: 48), 
             // Divider
             SizedBox(
               height: 30,
@@ -1245,7 +1224,7 @@ class _HomeState extends State<Home> {
             // Specialty Filter Popup
             PopupMenuButton<String?>(
               icon: Icon(
-                Icons.filter_list_outlined, // Use outlined version
+                Icons.filter_list_outlined,
                 size: 24,
                 color: filterIconColor,
               ),
@@ -1302,7 +1281,7 @@ class _HomeState extends State<Home> {
             const SizedBox(width: 8),
           ],
         ),
-        // Use theme borders, potentially overriding disabled state
+        // Use theme borders
         border:
             inputDecorationTheme.border ??
             OutlineInputBorder(
@@ -1341,22 +1320,18 @@ class _HomeState extends State<Home> {
   // --- Main Build Method ---
   @override
   Widget build(BuildContext context) {
-    // Theme data is fetched here or within specific build methods as needed
-    // Scaffold, AppBar, BottomNavigationBar rely heavily on the global theme set in main.dart
     return Scaffold(
-      // AppBar uses AppBarTheme from main.dart
       appBar: AppBar(
         title: const Text(
           'Doctor Appointment',
-        ), // Text color from AppBarTheme.foregroundColor
+        ), 
         centerTitle: true,
-        // elevation: handled by AppBarTheme
         actions: [
           if (!_isGuest && _loggedInUserId != null)
             IconButton(
               icon: const Icon(
                 Icons.logout_outlined,
-              ), // Icon color from AppBarTheme.foregroundColor
+              ), 
               tooltip: 'Logout',
               onPressed: _handleLogout,
             ),
@@ -1364,7 +1339,6 @@ class _HomeState extends State<Home> {
         ],
       ),
       body: _buildBody(),
-      // BottomNavigationBar uses BottomNavigationBarThemeData from main.dart
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
@@ -1378,10 +1352,8 @@ class _HomeState extends State<Home> {
           ),
         ],
         currentIndex: _selectedIndex,
-        // selectedItemColor, unselectedItemColor, backgroundColor, elevation handled by theme
-        showUnselectedLabels: true, // Keep labels visible
+        showUnselectedLabels: true, 
         onTap: _onItemTapped,
-        // type: BottomNavigationBarType.fixed, // Usually default, uncomment if needed
       ),
     );
   }
