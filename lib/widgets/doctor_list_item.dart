@@ -6,10 +6,8 @@ import '/screens/DoctorDetails.dart';
 class DoctorListItem extends StatelessWidget {
   final Doctor doctor;
   final bool isFavoriteView;
-  // --- NEW: Callback and Loading State ---
   final Function(String doctorId, bool isCurrentlyFavorite)? onFavoriteToggle;
   final bool isTogglingFavorite;
-  // --- END NEW ---
 
   const DoctorListItem({
     super.key,
@@ -17,141 +15,217 @@ class DoctorListItem extends StatelessWidget {
     this.isFavoriteView = false,
     this.onFavoriteToggle,
     this.isTogglingFavorite = false,
-    // --- END NEW ---
   });
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle nameStyle = const TextStyle(fontSize: 17, fontWeight: FontWeight.bold);
-    final TextStyle detailStyle = TextStyle(fontSize: 13, color: Colors.grey.shade700);
-    final TextStyle separatorStyle = TextStyle(fontSize: 13, color: Colors.grey.shade500);
-    final TextStyle ratingStyle = TextStyle(fontSize: 13, color: Colors.grey.shade600);
+    // --- Get Theme Data ---
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final cardTheme = theme.cardTheme;
 
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DoctorDetails(doctorId: doctor.id),
+    // --- Define Styles using Theme ---
+
+    final TextStyle nameStyle =
+        textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold) ??
+        const TextStyle(fontSize: 17, fontWeight: FontWeight.bold);
+
+    final TextStyle detailStyle =
+        textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant) ??
+        TextStyle(fontSize: 13, color: Colors.grey.shade700);
+
+    final TextStyle separatorStyle =
+        textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+        ) ??
+        TextStyle(fontSize: 13, color: Colors.grey.shade500);
+
+    final TextStyle ratingStyle =
+        textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant) ??
+        TextStyle(fontSize: 13, color: Colors.grey.shade600);
+
+    // --- Conditional Border for Favorite View ---
+    final BorderSide favoriteBorderSide =
+        isFavoriteView
+            ? BorderSide(
+              color: colorScheme.primary.withOpacity(0.6),
+              width: 1.5,
+            )
+            : BorderSide.none;
+
+    // --- Build Widget ---
+    return Card(
+      shape:
+          (cardTheme.shape as RoundedRectangleBorder?)?.copyWith(
+            side: favoriteBorderSide,
+          ) ??
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0), 
+            side: favoriteBorderSide,
           ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        padding: const EdgeInsets.all(12.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.15),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, 2),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DoctorDetails(doctorId: doctor.id),
             ),
-          ],
-          border: isFavoriteView
-              ? Border.all(color: Theme.of(context).primaryColor.withOpacity(0.6), width: 1.5)
-              : null,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Doctor Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8.0),
-              child: Image.network(
-                doctor.imageUrl.isNotEmpty ? doctor.imageUrl : 'https://via.placeholder.com/80?text=No+Image', 
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- Doctor Image ---
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.network(
+                  // Use a placeholder asset
+                  doctor.imageUrl.isNotEmpty
+                      ? doctor.imageUrl
+                      : 'https://via.placeholder.com/80?text=No+Image',
                   width: 80,
                   height: 80,
-                  color: Colors.grey.shade200,
-                  child: Icon(Icons.person, color: Colors.grey.shade400, size: 40),
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      // Placeholder while loading
+                      width: 80,
+                      height: 80,
+                      color: colorScheme.surfaceVariant,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          value:
+                              loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder:
+                      (context, error, stackTrace) => Container(
+                        width: 80,
+                        height: 80,
+                        color: colorScheme.surfaceVariant,
+                        child: Icon(
+                          Icons.person_outline,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 40,
+                        ),
+                      ),
                 ),
               ),
-            ),
-            const SizedBox(width: 15),
+              const SizedBox(width: 15),
 
-            // Doctor Info Column
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name
-                  Text(doctor.name, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  // Specialty | Address Row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start, 
-                    children: [
-                      Flexible( 
-                        child: Text(
-                          doctor.specialty,
-                          style: detailStyle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Separator
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                        child: Text('|', style: separatorStyle),
-                      ),
-                      // Address (
-                      Expanded(
-                        child: Text(
-                          doctor.address.isNotEmpty ? doctor.address : 'N/A',
-                          style: detailStyle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8), 
-
-                  // 3. Rating Row 
-                  Row(
-                    children: [
-                      Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        doctor.rating.toStringAsFixed(1),
-                        style: ratingStyle,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // --- UPDATED: Favorite Icon Button ---
-            // Show only if the callback is provided (i.e., user is logged in)
-            if (onFavoriteToggle != null)
-              isTogglingFavorite // Show loading indicator if toggling
-                ? Container(
-                    padding: const EdgeInsets.all(12.0), // Match IconButton padding roughly
-                    width: 48, // Match IconButton size roughly
-                    height: 48,
-                    child: const CircularProgressIndicator(strokeWidth: 2.5),
-                  )
-                : IconButton( // Show heart button otherwise
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: doctor.isFavorite ? Colors.redAccent : Colors.grey,
-                      size: 24, // Slightly larger icon maybe
+              // --- Doctor Info Column ---
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name
+                    Text(
+                      doctor.name,
+                      style: nameStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    tooltip: doctor.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
-                    // Call the callback function passed from Home.dart
-                    onPressed: () => onFavoriteToggle!(doctor.id, doctor.isFavorite),
-                  ),
-            // --- END UPDATED ---
-          ],
+                    const SizedBox(height: 4),
+                    // Specialty | Address Row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            doctor.specialty,
+                            style: detailStyle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Separator
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                          child: Text('|', style: separatorStyle),
+                        ),
+
+                        Expanded(
+                          child: Text(
+                            doctor.address.isNotEmpty ? doctor.address : 'N/A',
+                            style: detailStyle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Rating Row
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.star_rounded,
+                          color: Colors.amber.shade600,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          doctor.rating.toStringAsFixed(1),
+                          style: ratingStyle,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- Favorite Icon Button ---
+              if (onFavoriteToggle != null)
+                isTogglingFavorite
+                    ? Container(
+                      // Loading indicator
+                      padding: const EdgeInsets.all(12.0),
+                      width: 48,
+                      height: 48,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    )
+                    : IconButton(
+                      // Heart button
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        doctor.isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        //  red for favorite,
+                        color:
+                            doctor.isFavorite
+                                ? Colors.redAccent
+                                : colorScheme.onSurfaceVariant,
+                        size: 24,
+                      ),
+                      tooltip:
+                          doctor.isFavorite
+                              ? 'Remove from Favorites'
+                              : 'Add to Favorites',
+                      onPressed:
+                          () => onFavoriteToggle!(doctor.id, doctor.isFavorite),
+                      splashRadius: 24,
+                    ),
+            ],
+          ),
         ),
       ),
     );
