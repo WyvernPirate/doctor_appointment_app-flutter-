@@ -98,6 +98,7 @@ class _HomeState extends State<Home> {
   Future<void> _initializeHome() async {
     await _loadUserStatus();
     if (mounted) {
+      _getCurrentLocation(); // Start fetching location early (no await needed here)
       _showWelcomeSnackBar();
       if (_loggedInUserId != null || _isGuest) {
         await _fetchDoctors(); // Fetch doctors
@@ -179,7 +180,7 @@ class _HomeState extends State<Home> {
     });
 
     if (switchingToMap) {
-      // Fetch location when map is selected
+      // Location is now fetched during init, no need to fetch here
       _getCurrentLocation();
       // Clear list filters when switching to map (already handled by filter logic)
       setState(() {
