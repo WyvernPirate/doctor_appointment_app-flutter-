@@ -62,7 +62,7 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
-    _loadMapStyles(); 
+    // _loadMapStyles(); // Moved to _initializeHome
   }
 
   @override
@@ -96,6 +96,7 @@ class _HomeState extends State<Home> {
 
   // --- Initialization and User Status ---
   Future<void> _initializeHome() async {
+    await _loadMapStyles(); // Ensure styles are loaded before proceeding
     await _loadUserStatus();
     if (mounted) {
       _getCurrentLocation(); // Start fetching location early (no await needed here)
