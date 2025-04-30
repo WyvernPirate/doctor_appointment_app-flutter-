@@ -1,9 +1,25 @@
+// lib/firebase_options.dart
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart'; 
+
+/// Helper function to get environment variables
+String _getEnv(String name) {
+  final value = dotenv.env[name];
+  if (value == null) {
+    throw Exception('Missing environment variable: $name. Ensure .env file is loaded.');
+  }
+  return value;
+}
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
+    if (dotenv.env.isEmpty && !kIsWeb) { 
+      print("Warning: dotenv seems not loaded in DefaultFirebaseOptions. Ensure await dotenv.load() was called in main().");
+      throw Exception("dotenv is not loaded. Call await dotenv.load() in main() first.");
+    }
+
     if (kIsWeb) {
       return web;
     }
@@ -28,49 +44,50 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDRFSrbAFOQSDAqaY8kRK2JO8urT24eVHk',
-    appId: '1:4258195571:web:5d426201af99e7dfece206',
-    messagingSenderId: '4258195571',
-    projectId: 'doctorappointmentapp-9f11a',
-    authDomain: 'doctorappointmentapp-9f11a.firebaseapp.com',
-    storageBucket: 'doctorappointmentapp-9f11a.firebasestorage.app',
-    measurementId: 'G-17FJDGBC2T',
-  );
+  // --- Read values from environment variables ---
+  static FirebaseOptions get web => FirebaseOptions(
+        apiKey: _getEnv('FIREBASE_WEB_API_KEY'),
+        appId: _getEnv('FIREBASE_WEB_APP_ID'),
+        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: _getEnv('FIREBASE_PROJECT_ID'),
+        authDomain: _getEnv('FIREBASE_WEB_AUTH_DOMAIN'),
+        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
+        measurementId: _getEnv('FIREBASE_WEB_MEASUREMENT_ID'),
+      );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB_BUlJIrAQ4KO2ANO2-X9qFmu0XcNoNp8',
-    appId: '1:4258195571:android:53216a74a62412c4ece206',
-    messagingSenderId: '4258195571',
-    projectId: 'doctorappointmentapp-9f11a',
-    storageBucket: 'doctorappointmentapp-9f11a.firebasestorage.app',
-  );
+  static FirebaseOptions get android => FirebaseOptions(
+        apiKey: _getEnv('FIREBASE_ANDROID_API_KEY'),
+        appId: _getEnv('FIREBASE_ANDROID_APP_ID'),
+        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: _getEnv('FIREBASE_PROJECT_ID'),
+        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
+      );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAJ9ASkjimR8cDHSHncLkYwyd0eKah2a5Q',
-    appId: '1:4258195571:ios:99e52dc2dd59fab7ece206',
-    messagingSenderId: '4258195571',
-    projectId: 'doctorappointmentapp-9f11a',
-    storageBucket: 'doctorappointmentapp-9f11a.firebasestorage.app',
-    iosBundleId: 'com.example.doctorAppointmentApp',
-  );
+  static FirebaseOptions get ios => FirebaseOptions(
+        apiKey: _getEnv('FIREBASE_IOS_API_KEY'),
+        appId: _getEnv('FIREBASE_IOS_APP_ID'),
+        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: _getEnv('FIREBASE_PROJECT_ID'),
+        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
+        iosBundleId: _getEnv('FIREBASE_IOS_BUNDLE_ID'),
+      );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAJ9ASkjimR8cDHSHncLkYwyd0eKah2a5Q',
-    appId: '1:4258195571:ios:99e52dc2dd59fab7ece206',
-    messagingSenderId: '4258195571',
-    projectId: 'doctorappointmentapp-9f11a',
-    storageBucket: 'doctorappointmentapp-9f11a.firebasestorage.app',
-    iosBundleId: 'com.example.doctorAppointmentApp',
-  );
+  static FirebaseOptions get macos => FirebaseOptions(
+        apiKey: _getEnv('FIREBASE_MACOS_API_KEY'),
+        appId: _getEnv('FIREBASE_MACOS_APP_ID'),
+        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: _getEnv('FIREBASE_PROJECT_ID'),
+        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
+        iosBundleId: _getEnv('FIREBASE_MACOS_BUNDLE_ID'),
+      );
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDRFSrbAFOQSDAqaY8kRK2JO8urT24eVHk',
-    appId: '1:4258195571:web:73875b2466136043ece206',
-    messagingSenderId: '4258195571',
-    projectId: 'doctorappointmentapp-9f11a',
-    authDomain: 'doctorappointmentapp-9f11a.firebaseapp.com',
-    storageBucket: 'doctorappointmentapp-9f11a.firebasestorage.app',
-    measurementId: 'G-EDNFJ8WQPB',
-  );
+  static FirebaseOptions get windows => FirebaseOptions(
+        apiKey: _getEnv('FIREBASE_WINDOWS_API_KEY'),
+        appId: _getEnv('FIREBASE_WINDOWS_APP_ID'),
+        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: _getEnv('FIREBASE_PROJECT_ID'),
+        authDomain: _getEnv('FIREBASE_WINDOWS_AUTH_DOMAIN'),
+        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
+        measurementId: _getEnv('FIREBASE_WINDOWS_MEASUREMENT_ID'),
+      );
 }
