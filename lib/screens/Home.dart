@@ -43,7 +43,6 @@ class _HomeState extends State<Home> {
 
   // --- Doctor Data State ---
   List<Doctor> _doctors = [];
-  List<Doctor> _favoriteDoctors = []; // Still useful for quick access if needed
   bool _isLoadingDoctors = true;
   String? _errorLoadingDoctors;
   Set<String> _userFavoriteIds = {};
