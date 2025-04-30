@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'screens/Home.dart';
 import 'screens/InitLogin.dart';
 import 'providers/theme_provider.dart';
+import 'dart:io';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,8 @@ Future<void> main() async {
     print("CRITICAL ERROR: Failed to load .env file: $e");
     // Handle this critical error appropriately. Maybe show an error screen or exit.
     // The app likely cannot function without Firebase config.
+    
+    print("Current working directory: ${Directory.current.path}");
     return; // Stop execution if .env fails
   }
 
