@@ -31,6 +31,7 @@ class _ProfileCreationState extends State<ProfileCreation> {
   bool _isLoading = false;
 
   final ImagePicker _picker = ImagePicker();
+  // ignore: unused_field
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   @override
