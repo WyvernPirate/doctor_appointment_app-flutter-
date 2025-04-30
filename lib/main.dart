@@ -2,13 +2,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'providers/theme_provider.dart';
 import 'screens/Home.dart';
 import 'screens/InitLogin.dart';
-import 'providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +31,9 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    //Enable Firestore offline persistence (BEFORE any other Firestore operations)
+      FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true,
+      );
     print("Firebase initialized successfully.");
   } catch (e) {
     print("CRITICAL ERROR: Failed to initialize Firebase: $e");
