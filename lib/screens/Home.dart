@@ -91,7 +91,6 @@ class _HomeState extends State<Home> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // No longer need to apply map style here
   }
 
 
@@ -560,7 +559,7 @@ class _HomeState extends State<Home> {
                   loggedInUserId: _loggedInUserId,
                   togglingFavoriteIds: _togglingFavorite,
                   onFavoriteToggle: _toggleFavoriteStatus, // Pass the toggle callback
-                  onRefresh: _fetchDoctors, // Pass the refresh callback
+                  onRefresh: _fetchDoctors, userFavoriteIds: _userFavoriteIds, // Pass the refresh callback
                 ),
         ),
       ],
