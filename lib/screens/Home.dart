@@ -55,6 +55,7 @@ class _HomeState extends State<Home> {
   String? _lightMapStyle;
   String? _darkMapStyle;
  
+  late PageController _pageController; // Controller for PageView
 
   @override
   void initState() {
@@ -62,6 +63,7 @@ class _HomeState extends State<Home> {
     _selectedPredefinedFilter = _predefinedFilters.first; // Default to 'All'
     _initializeHome();
     _searchController.addListener(_onSearchChanged);
+    _pageController = PageController(initialPage: _selectedIndex); // Initialize PageController
     // _loadMapStyles(); // Moved to _initializeHome
   }
 
@@ -69,6 +71,7 @@ class _HomeState extends State<Home> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _pageController.dispose(); // Dispose PageController
     super.dispose();
   }
 
@@ -430,34 +433,41 @@ class _HomeState extends State<Home> {
 
   // --- Navigation  ---
   void _onItemTapped(int index) {
-    // If switching away from map, clear location state
-    if (_selectedIndex == 0 && _selectedPredefinedFilter == 'Map' && index != 0) {
-       setState(() {
-           _locationError = null;
-           _isLoadingLocation = false;
-       });
-    }
-    setState(() {
-      _selectedIndex = index;
-    });
+    // Animate PageView to the selected index
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   // --- Body Building Logic ---
   Widget _buildBody() {
-    switch (_selectedIndex) {
-      case 0:
-        return _homeScreenBody();
-      case 1:
-        return _isGuest
-            ? _guestModeNotice("view appointments")
-            : const Appointments();
-      case 2:
-        return _isGuest
-            ? _guestModeNotice("view your profile")
-            : const Profile();
-      default:
-        return _homeScreenBody(); // Fallback to home
-    }
+    // Use PageView for swipe navigation
+    return PageView(
+      controller: _pageController,
+      onPageChanged: (index) {
+        // If switching away from map via swipe, clear location state
+        if (_selectedIndex == 0 && _selectedPredefinedFilter == 'Map' && index != 0) {
+          setState(() {
+              _locationError = null;
+              _isLoadingLocation = false;
+          });
+        }
+        setState(() {
+          _selectedIndex = index; // Update BottomNavBar index when swiped
+        });
+      },
+      children: <Widget>[
+        _homeScreenBody(), // Page 0: Home
+        _isGuest
+            ? _guestModeNotice("view appointments") // Page 1: Appointments (or Guest Notice)
+            : const Appointments(),
+        _isGuest
+            ? _guestModeNotice("view your profile") // Page 2: Profile (or Guest Notice)
+            : const Profile(),
+      ],
+    );
   }
 
   // Guest Mode Notice 
