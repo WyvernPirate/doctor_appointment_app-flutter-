@@ -27,7 +27,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   String? _loggedInUserId;
 
   // --- Map Controller ---
-  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -367,7 +366,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
            ),
            const SizedBox(height: 8),
            Text(
-             doctor.bio ?? '', // Use null-aware operator ?? for safety
+             doctor.bio ,
              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: Colors.grey.shade800),
            ),
          ],
@@ -400,7 +399,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
             ),
           },
           onMapCreated: (GoogleMapController controller) {
-            _mapController = controller;
           },
           zoomControlsEnabled: false,
           mapToolbarEnabled: false,
