@@ -9,26 +9,34 @@ import 'screens/Home.dart';
 import 'screens/InitLogin.dart';
 import 'providers/theme_provider.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 2. Load environment variables FIRST
   try {
     await dotenv.load(fileName: ".env");
-    print(".env file loaded successfully."); 
+    print(".env file loaded successfully."); // Good for debugging
   } catch (e) {
-    print("Error loading .env file: $e"); 
+    print("CRITICAL ERROR: Failed to load .env file: $e");
+    // Handle this critical error appropriately. Maybe show an error screen or exit.
+    // The app likely cannot function without Firebase config.
+    return; // Stop execution if .env fails
   }
 
-
-  // Initialize Firebase AFTER loading .env
+  // 3. Initialize Firebase SECOND, using the loaded options
   try {
-     await Firebase.initializeApp(
-       options: DefaultFirebaseOptions.currentPlatform,
-     );
-     print("Firebase initialized successfully."); 
-  } catch(e) {
-     print("Error initializing Firebase: $e");
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform, // Use your options class
+    );
+    print("Firebase initialized successfully."); // Good for debugging
+  } catch (e) {
+    print("CRITICAL ERROR: Failed to initialize Firebase: $e");
+    // Handle this critical error. The app cannot use Firebase services.
+    // Maybe show an error message to the user.
+    return; // Stop execution if Firebase init fails
   }
- 
+
+  // 4. Run the app LAST
   final themeProvider = ThemeProvider();
   await themeProvider.loadThemeMode();
 
@@ -73,6 +81,7 @@ class MyApp extends StatelessWidget {
 
       // --- Light Theme Configuration ---
       theme: ThemeData(
+        // Your light theme configuration
         brightness: Brightness.light,
         primarySwatch: Colors.blue, 
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
@@ -110,6 +119,7 @@ class MyApp extends StatelessWidget {
 
       // --- Dark Theme Configuration ---
       darkTheme: ThemeData(
+        // Your dark theme configuration
         brightness: Brightness.dark,
         primarySwatch: Colors.blue,
         colorScheme: ColorScheme.fromSeed(
