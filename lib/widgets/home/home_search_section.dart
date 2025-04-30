@@ -1,6 +1,5 @@
 // lib/widgets/home/home_search_section.dart
 import 'package:flutter/material.dart';
-import '/models/doctor.dart'; // Assuming Doctor model might be needed indirectly (e.g., for specialties)
 
 class HomeSearchSection extends StatelessWidget {
   final TextEditingController searchController;
@@ -56,7 +55,7 @@ class HomeSearchSection extends StatelessWidget {
         color: mapFilterActive ? theme.disabledColor : null,
       ), // Dim text if map active
       decoration: InputDecoration(
-        filled: inputDecorationTheme.filled ?? true,
+        filled: inputDecorationTheme.filled,
         fillColor: fillColor,
         contentPadding: inputDecorationTheme.contentPadding ??
             const EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
