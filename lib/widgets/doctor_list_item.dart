@@ -206,22 +206,22 @@ class DoctorListItem extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: Icon(
-                        doctor.isFavorite
+                        isFavoriteView // Use the passed-in state
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        //  red for favorite,
+                        // Red for favorite, default otherwise
                         color:
-                            doctor.isFavorite
+                            isFavoriteView // Use the passed-in state
                                 ? Colors.redAccent
                                 : colorScheme.onSurfaceVariant,
                         size: 24,
                       ),
                       tooltip:
-                          doctor.isFavorite
+                          isFavoriteView // Use the passed-in state
                               ? 'Remove from Favorites'
                               : 'Add to Favorites',
                       onPressed:
-                          () => onFavoriteToggle!(doctor.id, doctor.isFavorite),
+                          () => onFavoriteToggle!(doctor.id, isFavoriteView), // Pass the correct current state
                       splashRadius: 24,
                     ),
             ],
