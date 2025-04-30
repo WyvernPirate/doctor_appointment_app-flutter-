@@ -174,7 +174,7 @@ class _HomeState extends State<Home> {
        // Clear location error when switching away from map
       if (switchingFromMap) {
         _locationError = null;
-        _isLoadingLocation = false; // Ensure loading indicator stops
+        _isLoadingLocation = false; 
       }
     });
 
@@ -183,10 +183,10 @@ class _HomeState extends State<Home> {
       _getCurrentLocation();
       // Clear list filters when switching to map (already handled by filter logic)
       setState(() {
-        _filteredDoctors = []; // Explicitly clear for map view
+        _filteredDoctors = []; 
       });
     } else {
-      _filterDoctors(); // Apply list filters
+      _filterDoctors(); 
     }
   }
 
@@ -255,13 +255,9 @@ class _HomeState extends State<Home> {
     setState(() {
       _isLoadingDoctors = true;
       _errorLoadingDoctors = null;
-      // Don't clear _filteredDoctors here, let filter logic handle it
-      // _filteredDoctors = [];
-      // _favoriteDoctors = []; // Keep for potential future use? Or remove if unused.
-      // _userFavoriteIds = {}; // Fetch fresh below
     });
 
-    List<Doctor> previouslyFetchedDoctors = List.from(_doctors); // Keep old data temporarily
+    List<Doctor> previouslyFetchedDoctors = List.from(_doctors); 
 
     try {
       // 1. Fetch User's Favorite IDs (only if logged in)
@@ -285,10 +281,9 @@ class _HomeState extends State<Home> {
       QuerySnapshot doctorSnapshot = await FirebaseFirestore.instance.collection('doctors').get();
 
       if (mounted) {
-        // Process Doctors (No need to merge favorite status here, _userFavoriteIds handles it)
+        // Process Doctors
         final List<Doctor> processedDoctors = doctorSnapshot.docs.map((doc) {
-          // Note: Doctor.fromFirestore should NOT set isFavorite.
-          // isFavorite is now determined dynamically based on _userFavoriteIds.
+     
           return Doctor.fromFirestore(doc);
         }).toList();
 
