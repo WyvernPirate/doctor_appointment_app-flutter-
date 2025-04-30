@@ -242,6 +242,23 @@ class _HomeMapViewState extends State<HomeMapView> {
       initialZoom = 4.0;
     }
 
+    // --- Determine Initial Map Style based on current theme ---
+    String? initialStyleString;
+    final currentBrightness = Theme.of(context).brightness;
+    if (currentBrightness == Brightness.dark && widget.darkMapStyle != null) {
+      initialStyleString = widget.darkMapStyle;
+    } else if (currentBrightness == Brightness.light && widget.lightMapStyle != null) {
+      initialStyleString = widget.lightMapStyle;
+    } else {
+      // Fallback logic if one style is missing but the other exists
+      if (currentBrightness == Brightness.dark && widget.lightMapStyle != null) {
+        initialStyleString = widget.lightMapStyle; // Fallback to light
+      } else if (currentBrightness == Brightness.light && widget.darkMapStyle != null) {
+        initialStyleString = widget.darkMapStyle; // Fallback to dark
+      }
+      // If both are null, initialStyleString remains null (default map)
+    }
+
     // --- Map Widget ---
     return GoogleMap(
       initialCameraPosition: CameraPosition(
@@ -249,6 +266,7 @@ class _HomeMapViewState extends State<HomeMapView> {
         zoom: initialZoom,
       ),
       markers: markers,
+      style: initialStyleString, // Apply initial style directly
       mapType: MapType.normal,
       myLocationEnabled: true, // Show blue dot for user location
       myLocationButtonEnabled: true,
@@ -258,8 +276,8 @@ class _HomeMapViewState extends State<HomeMapView> {
         // Only assign controller once
         if (_mapController == null) {
              _mapController = controller;
-             print("Map created. Applying initial style...");
-             await _applyMapStyleBasedOnTheme(); // Apply style immediately after creation
+             print("Map created. Controller assigned.");
+             // await _applyMapStyleBasedOnTheme(); // No longer needed here, style is set via parameter
 
              // If user location was already available when map created, move camera
              if (widget.currentUserPosition != null && mounted) {
