@@ -96,7 +96,7 @@ class DoctorListItem extends StatelessWidget {
                       // Placeholder while loading
                       width: 80,
                       height: 80,
-                      color: colorScheme.surfaceContainerHighest,
+                      color: colorScheme.surfaceVariant,
                       child: Center(
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
@@ -113,7 +113,7 @@ class DoctorListItem extends StatelessWidget {
                       (context, error, stackTrace) => Container(
                         width: 80,
                         height: 80,
-                        color: colorScheme.surfaceContainerHighest,
+                        color: colorScheme.surfaceVariant,
                         child: Icon(
                           Icons.person_outline,
                           color: colorScheme.onSurfaceVariant,
