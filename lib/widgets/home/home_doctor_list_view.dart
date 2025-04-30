@@ -18,6 +18,7 @@ class HomeDoctorListView extends StatelessWidget {
   final bool isGuest;
   final String? loggedInUserId;
   final Set<String> togglingFavoriteIds;
+  final Set<String> userFavoriteIds; // Add this parameter
   final FavoriteToggleCallback? onFavoriteToggle; // Use the type alias
   final RefreshCallback onRefresh; // For RefreshIndicator
 
@@ -34,7 +35,8 @@ class HomeDoctorListView extends StatelessWidget {
     required this.isGuest,
     required this.loggedInUserId,
     required this.togglingFavoriteIds,
-    required this.onFavoriteToggle,
+    required this.userFavoriteIds, // Make it required
+    required this.onFavoriteToggle, 
     required this.onRefresh,
   });
 
@@ -111,9 +113,12 @@ class HomeDoctorListView extends StatelessWidget {
     // Build the list using filteredDoctors
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
+        // Determine if the current doctor is a favorite
         final doctor = filteredDoctors[index];
+        final bool isFavorite = userFavoriteIds.contains(doctor.id);
         return DoctorListItem(
           doctor: doctor,
+          isFavoriteView: isFavorite, // Pass the favorite status (assuming DoctorListItem uses 'isFavoriteView')
           onFavoriteToggle: loggedInUserId != null ? onFavoriteToggle : null, // Pass callback
           isTogglingFavorite: togglingFavoriteIds.contains(doctor.id),
         );
