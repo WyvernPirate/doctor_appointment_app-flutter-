@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,35 +9,30 @@ import 'firebase_options.dart';
 import 'screens/Home.dart';
 import 'screens/InitLogin.dart';
 import 'providers/theme_provider.dart';
-import 'dart:io';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Load environment variables FIRST
   try {
     await dotenv.load(fileName: ".env");
-    print(".env file loaded successfully."); // Good for debugging
+    // Load the .env file content from assets
+    final envString = await rootBundle.loadString('.env');
+    // Parse the string
+    dotenv.testLoad(fileInput: envString);
+    print(".env file loaded successfully.");
   } catch (e) {
     print("CRITICAL ERROR: Failed to load .env file: $e");
-    // Handle this critical error appropriately. Maybe show an error screen or exit.
-    // The app likely cannot function without Firebase config.
-    
-    print("Current working directory: ${Directory.current.path}");
     return; // Stop execution if .env fails
   }
 
-  // 3. Initialize Firebase SECOND, using the loaded options
   try {
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform, // Use your options class
+      options: DefaultFirebaseOptions.currentPlatform,
     );
-    print("Firebase initialized successfully."); // Good for debugging
+    print("Firebase initialized successfully.");
   } catch (e) {
     print("CRITICAL ERROR: Failed to initialize Firebase: $e");
-    // Handle this critical error. The app cannot use Firebase services.
-    // Maybe show an error message to the user.
-    return; // Stop execution if Firebase init fails
+    return;
   }
 
   // 4. Run the app LAST
@@ -44,16 +40,13 @@ Future<void> main() async {
   await themeProvider.loadThemeMode();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => themeProvider,
-      child: const MyApp(),
-    ),
+    ChangeNotifierProvider(create: (_) => themeProvider, child: const MyApp()),
   );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-   // Function to check if user session exists
+  // Function to check if user session exists
   Future<bool> _checkUserSession() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('loggedInUserId') != null;
@@ -66,16 +59,14 @@ class MyApp extends StatelessWidget {
     // Define common text theme adjustments for better readability
     TextTheme commonTextTheme(TextTheme base) {
       return base.apply(
-        bodyColor: base.bodyLarge?.color?.withOpacity(0.87), // Standard opacity for body text
-        displayColor: base.displayLarge?.color?.withOpacity(0.87), // Standard opacity for display text
+        bodyColor: base.bodyLarge?.color?.withOpacity(0.87),
+        displayColor: base.displayLarge?.color?.withOpacity(0.87),
       );
     }
 
     // Define common icon theme
     IconThemeData commonIconTheme(IconThemeData base) {
-       return base.copyWith(
-         opacity: 0.87,
-       );
+      return base.copyWith(opacity: 0.87);
     }
 
     return MaterialApp(
@@ -84,30 +75,34 @@ class MyApp extends StatelessWidget {
 
       // --- Light Theme Configuration ---
       theme: ThemeData(
-        // Your light theme configuration
         brightness: Brightness.light,
-        primarySwatch: Colors.blue, 
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
-        scaffoldBackgroundColor: Colors.grey[50], // Very light grey background
+        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: Colors.grey[50],
         appBarTheme: AppBarTheme(
-          backgroundColor: Colors.blue, // Standard blue app bar
-          foregroundColor: Colors.white, // White text/icons on app bar
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
           elevation: 1.0,
         ),
         cardTheme: CardTheme(
-           elevation: 1.5,
-           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-           margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-           color: Colors.white, // Explicitly white cards
+          elevation: 1.5,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+          color: Colors.white,
         ),
         chipTheme: ChipThemeData(
-           backgroundColor: Colors.grey.shade200,
-           selectedColor: Colors.blue.shade600,
-           secondarySelectedColor: Colors.blue.shade600, // Ensure consistency
-           labelStyle: TextStyle(color: Colors.black87),
-           secondaryLabelStyle: TextStyle(color: Colors.white), // Text color when selected
-           shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade300)),
-           showCheckmark: false,
+          backgroundColor: Colors.grey.shade200,
+          selectedColor: Colors.blue.shade600,
+          secondarySelectedColor: Colors.blue.shade600,
+          labelStyle: TextStyle(color: Colors.black87),
+          secondaryLabelStyle: TextStyle(color: Colors.white),
+          shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade300)),
+          showCheckmark: false,
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
@@ -122,45 +117,45 @@ class MyApp extends StatelessWidget {
 
       // --- Dark Theme Configuration ---
       darkTheme: ThemeData(
-        // Your dark theme configuration
         brightness: Brightness.dark,
         primarySwatch: Colors.blue,
         colorScheme: ColorScheme.fromSeed(
-           seedColor: Colors.blue, // Base color
-           brightness: Brightness.dark,
-           // Override specific colors for a greyish look
-           background: Colors.grey[900]!, // Dark grey background
-           surface: Colors.grey[850]!, // Slightly lighter surface for cards/dialogs
-           onBackground: Colors.white.withOpacity(0.87), // Text on background
-           onSurface: Colors.white.withOpacity(0.87), // Text on surfaces
-           primary: Colors.blue[300]!, // Lighter blue for primary elements
-           onPrimary: Colors.black87, // Text on primary color
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+          background: Colors.grey[900]!,
+          surface: Colors.grey[850]!,
+          onBackground: Colors.white.withOpacity(0.87),
+          onSurface: Colors.white.withOpacity(0.87),
+          primary: Colors.blue[300]!,
+          onPrimary: Colors.black87,
         ),
-        scaffoldBackgroundColor: Colors.grey[900], // Dark grey background
+        scaffoldBackgroundColor: Colors.grey[900],
         appBarTheme: AppBarTheme(
-          backgroundColor: Colors.grey[850], // Slightly lighter grey for app bar
-          foregroundColor: Colors.white.withOpacity(0.87), // Text/icons on app bar
+          backgroundColor: Colors.grey[850],
+          foregroundColor: Colors.white.withOpacity(0.87),
           elevation: 1.0,
         ),
-         cardTheme: CardTheme(
-           elevation: 2.0,
-           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-           margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-           color: Colors.grey[850], // Use surface color from ColorScheme
+        cardTheme: CardTheme(
+          elevation: 2.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+          color: Colors.grey[850],
         ),
         chipTheme: ChipThemeData(
-           backgroundColor: Colors.grey.shade700, // Darker grey for unselected chips
-           selectedColor: Colors.blue.shade400, // Slightly brighter blue for selected
-           secondarySelectedColor: Colors.blue.shade400,
-           labelStyle: TextStyle(color: Colors.white.withOpacity(0.87)),
-           secondaryLabelStyle: TextStyle(color: Colors.white), // Text color when selected
-           shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade600)),
-           showCheckmark: false,
+          backgroundColor: Colors.grey.shade700,
+          selectedColor: Colors.blue.shade400,
+          secondarySelectedColor: Colors.blue.shade400,
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.87)),
+          secondaryLabelStyle: TextStyle(color: Colors.white),
+          shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade600)),
+          showCheckmark: false,
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: Colors.grey[850], // Match app bar
-          selectedItemColor: Colors.blue[300], // Lighter blue for selected item
-          unselectedItemColor: Colors.grey[500], // Lighter grey for unselected
+          backgroundColor: Colors.grey[850],
+          selectedItemColor: Colors.blue[300],
+          unselectedItemColor: Colors.grey[500],
           elevation: 4.0,
         ),
         textTheme: commonTextTheme(ThemeData.dark().textTheme),
@@ -173,7 +168,9 @@ class MyApp extends StatelessWidget {
         future: _checkUserSession(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
           } else if (snapshot.hasData && snapshot.data == true) {
             return const Home();
           } else {
