@@ -180,9 +180,6 @@ class _HomeState extends State<Home> {
     });
 
     if (switchingToMap) {
-      // Location is now fetched during init, no need to fetch here
-      _getCurrentLocation();
-      // Clear list filters when switching to map (already handled by filter logic)
       setState(() {
         _filteredDoctors = []; 
       });
