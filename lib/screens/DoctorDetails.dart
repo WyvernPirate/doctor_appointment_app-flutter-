@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '/models/doctor.dart'; // Ensure this path is correct
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart'; // For date/time formatting
 
 // --- Main Details Screen Widget ---
 class DoctorDetails extends StatefulWidget {
@@ -108,7 +109,11 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   }
 
   // --- Helper to launch maps ---
-  Future<void> _launchMap(LatLng? location, String? address) async {
+  Future<void> _launchMap(double? latitude, double? longitude, String? address) async {
+    LatLng? location = (latitude != null && longitude != null && latitude != 0.0 && longitude != 0.0)
+        ? LatLng(latitude, longitude)
+        : null;
+
     if (location == null && (address == null || address.isEmpty)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,8 +125,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     String query = '';
     if (location != null) {
       query = '${location.latitude},${location.longitude}';
-    } else {
-      query = Uri.encodeComponent(address!);
+    } else if (address != null && address.isNotEmpty) {
+      query = Uri.encodeComponent(address);
     }
 
     final Uri mapUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
@@ -139,7 +144,6 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
 
   // --- CORRECT Handle Booking Action: Show Bottom Sheet ---
-  // REMOVED the incorrect first _handleBooking function
   void _handleBooking() {
     if (_doctor == null || _loggedInUserId == null) {
        ScaffoldMessenger.of(context).showSnackBar(
@@ -199,7 +203,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               label: const Text('Book Appointment'),
               icon: const Icon(Icons.calendar_today_outlined),
               backgroundColor: Theme.of(context).primaryColor,
-              // foregroundColor: Colors.white, // REMOVED: Not a direct property
+              foregroundColor: Colors.white, // Added foregroundColor for better contrast
             ),
     );
   }
@@ -223,10 +227,10 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
     final doctor = _doctor!;
     return SafeArea(
-      bottom: true,
-      top: false,
+      bottom: true, // Ensure content avoids bottom system intrusions (like home bar)
+      top: false, // AppBar handles top padding
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 90),
+        padding: const EdgeInsets.only(bottom: 90), // Padding to avoid overlap with FAB
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -237,8 +241,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               child: _buildInfoSection(doctor),
             ),
             const SizedBox(height: 20),
-            // Optional Map Section
-            if (doctor.location != null)
+            // Optional Map Section - Check if lat/long are valid (not the default 0.0)
+            if (doctor.latitude != 0.0 || doctor.longitude != 0.0)
               _buildMapSection(doctor),
             // Optional About Section - Check for null/empty bio
             if (doctor.bio.isNotEmpty)
@@ -273,12 +277,13 @@ class _DoctorDetailsState extends State<DoctorDetails> {
                   : const AssetImage('assets/profile_placeholder.png') as ImageProvider,
               onBackgroundImageError: (exception, stackTrace) {
                  print("Error loading doctor image: $exception");
+                 // Optionally set a flag to show a placeholder icon instead
               },
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 240.0),
+          padding: const EdgeInsets.only(top: 240.0), // Adjust spacing below avatar
           child: Column(
             children: [
               Text(
@@ -298,7 +303,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
                 children: [
                   Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
                   const SizedBox(width: 5),
-                  
+                  Text(
+                    doctor.rating.toStringAsFixed(1), // Format rating
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  // You might want to add review count here if available
+                  // Text(' (${doctor.reviewCount ?? 0} reviews)', style: TextStyle(color: Colors.grey)),
                 ],
               ),
             ],
@@ -306,6 +316,19 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         ),
       ],
     );
+  }
+
+  // --- Helper to format working hours ---
+  String _formatWorkingHours(Map<String, String> hours) {
+    if (hours.isEmpty) {
+      return 'Not Available';
+    }
+    // Example: Get today's hours or list all
+    // For simplicity, let's list all for now
+    return hours.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+    // To get today's hours:
+    // final today = DateFormat('EEEE').format(DateTime.now()); // e.g., 'Monday'
+    // return hours[today] ?? 'Closed Today';
   }
 
   // --- Info Section ---
@@ -322,7 +345,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               title: const Text('Address'),
               subtitle: Text(doctor.address.isNotEmpty ? doctor.address : 'Not Available'),
               trailing: const Icon(Icons.launch, size: 18, color: Colors.blue),
-              onTap: () => _launchMap(doctor.location, doctor.address),
+              onTap: () => _launchMap(doctor.latitude, doctor.longitude, doctor.address),
               dense: true,
             ),
             _buildDivider(),
@@ -335,15 +358,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
               dense: true,
             ),
             _buildDivider(),
-            // CORRECTED: Working Hours ListTile with null/empty check
             ListTile(
                leading: Icon(Icons.access_time_outlined, color: Theme.of(context).primaryColor),
                title: const Text('Working Hours'),
-              /// subtitle: Text(
-                // (doctor.workingHours != null && doctor.workingHours!.isNotEmpty)
-                 //  ? doctor.workingHours!
-                 //  : 'Not Available'
-             //  ),
+               subtitle: Text(
+                 _formatWorkingHours(doctor.workingHours),
+               ),
                dense: true,
              ),
           ],
@@ -376,32 +396,35 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
   // --- Map Section ---
   Widget _buildMapSection(Doctor doctor) {
-    if (doctor.location == null) return const SizedBox.shrink();
+    // Already checked for 0.0 lat/long before calling this
+    final LatLng position = LatLng(doctor.latitude, doctor.longitude);
+
     return Container(
       height: 200,
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        // border: Border.all(color: Colors.grey.shade300), // Optional border
       ),
-      child: ClipRRect(
+      child: ClipRRect( // Clip the map to the rounded corners
         borderRadius: BorderRadius.circular(12),
         child: GoogleMap(
           initialCameraPosition: CameraPosition(
-            target: doctor.location!,
+            target: position,
             zoom: 15.0,
           ),
           markers: {
             Marker(
               markerId: MarkerId(doctor.id),
-              position: doctor.location!,
+              position: position, // Use the LatLng position variable
               infoWindow: InfoWindow(title: doctor.name, snippet: doctor.address),
             ),
           },
           onMapCreated: (GoogleMapController controller) {
+            // You can store the controller if needed: _mapController = controller;
           },
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
+          zoomControlsEnabled: false, // Keep UI clean
+          mapToolbarEnabled: false, // Disable default map toolbar
         ),
       ),
     );
@@ -418,8 +441,9 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
-} 
+}
 
+// --- Booking Bottom Sheet Widget ---
 class _BookingBottomSheetContent extends StatefulWidget {
   final Doctor doctor;
   final String userId;
@@ -435,33 +459,51 @@ class _BookingBottomSheetContent extends StatefulWidget {
 
 class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> {
   DateTime? _selectedDate;
-  DateTime? _selectedTime;
+  String? _selectedSlot; // Changed from DateTime? _selectedTime
   bool _isBooking = false;
 
   @override
   void initState() {
      super.initState();
     final now = DateTime.now();
-    final DateTime firstValidDate = (now.hour >= 16)
-        ? DateTime(now.year, now.month, now.day + 1)
-        : DateTime(now.year, now.month, now.day);
+    // Set initial date (today or tomorrow if it's late, e.g., after 5 PM)
+    final DateTime firstValidDate = (now.hour >= 17) // Booking closes at 5 PM
+        ? DateTime(now.year, now.month, now.day + 1, 0, 0) // Start from tomorrow midnight
+        : DateTime(now.year, now.month, now.day, 0, 0); // Start from today midnight
     _selectedDate = firstValidDate;
-    _selectedTime = DateTime(
-      _selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0,
-    );
+    // Initial slot is not selected
+    _selectedSlot = null;
   }
 
-  DateTime? get _finalSelectedDateTime {
-     if (_selectedDate == null || _selectedTime == null) return null;
-    return DateTime(
-      _selectedDate!.year, _selectedDate!.month, _selectedDate!.day,
-      _selectedTime!.hour, _selectedTime!.minute,
-    );
-  }
 
   Future<void> _confirmBooking() async {
-    final bookingDateTime = _finalSelectedDateTime;
+    // --- Construct final DateTime from date and slot ---
+    DateTime? bookingDateTime;
+    if (_selectedDate != null && _selectedSlot != null) {
+      try {
+        // Assuming slots are like "HH:mm" (e.g., "09:30")
+        final timeParts = _selectedSlot!.split(':');
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        bookingDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, hour, minute);
+      } catch (e) {
+        print("Error parsing selected slot '$_selectedSlot': $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Invalid time slot format: $_selectedSlot'), backgroundColor: Colors.red),
+          );
+        }
+        return; // Stop booking if slot format is wrong
+      }
+    }
+
     if (bookingDateTime == null || _isBooking) {
+      // Show message if date/slot not selected
+      if (bookingDateTime == null && mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Please select a date and time slot.')),
+         );
+      }
       return;
     }
 
@@ -472,22 +514,22 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
       'doctorId': widget.doctor.id,
       'doctorName': widget.doctor.name,
       'doctorSpecialty': widget.doctor.specialty,
-      'doctorImageUrl': widget.doctor.imageUrl,
+      'doctorImageUrl': widget.doctor.imageUrl, // Include image for appointment list display
       'userId': widget.userId,
-      'appointmentTime': Timestamp.fromDate(bookingDateTime),
-      'status': 'Scheduled',
-      'createdAt': FieldValue.serverTimestamp(),
+      'appointmentTime': Timestamp.fromDate(bookingDateTime), // Use the combined DateTime
+      'status': 'Scheduled', // Initial status
+      'createdAt': FieldValue.serverTimestamp(), // Record creation time
     };
 
     try {
       await FirebaseFirestore.instance.collection('appointments').add(appointmentData);
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context); // Close the bottom sheet
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Booking confirmed for ${widget.doctor.name}'),
-            duration: const Duration(seconds: 3),
+            content: Text('Booking confirmed for ${widget.doctor.name} on ${DateFormat.yMd().add_jm().format(bookingDateTime)}'),
+            duration: const Duration(seconds: 4),
             backgroundColor: Colors.green,
           ),
         );
@@ -514,18 +556,19 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
   @override
   Widget build(BuildContext context) {
      final now = DateTime.now();
-    final DateTime firstBookableDate = (now.hour >= 16) ? DateTime(now.year, now.month, now.day + 1) : DateTime(now.year, now.month, now.day);
-    final DateTime lastBookableDate = now.add(const Duration(days: 90));
-   final DateTime minTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0); 
-    final DateTime maxTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 16, 0); 
-    return SingleChildScrollView(
+    // Ensure first bookable date respects the logic from initState
+    final DateTime firstBookableDate = (now.hour >= 17) ? DateTime(now.year, now.month, now.day + 1, 0, 0) : DateTime(now.year, now.month, now.day, 0, 0);
+    final DateTime lastBookableDate = now.add(const Duration(days: 90)); // Allow booking up to 90 days in advance
+
+    return SingleChildScrollView( // Makes content scrollable if it overflows
       child: Padding(
         padding: EdgeInsets.only(
           left: 16.0, right: 16.0, top: 20.0,
+          // Adjust bottom padding to account for keyboard when/if needed
           bottom: MediaQuery.of(context).viewInsets.bottom + 20.0
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min, // Take only needed vertical space
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
@@ -546,54 +589,62 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
               firstDate: firstBookableDate,
               lastDate: lastBookableDate,
               onDateChanged: (newDate) {
-                if (!newDate.isBefore(firstBookableDate)) {
+                // Basic validation (already handled by firstDate)
+                // if (!newDate.isBefore(firstBookableDate)) {
                   setState(() {
-                    _selectedDate = newDate;
-          
-                    DateTime potentialNewTime = DateTime(
-                      newDate.year, newDate.month, newDate.day,
-                      _selectedTime?.hour ?? 9, 
-                      _selectedTime?.minute ?? 0 
-                    );
-                   
-                    if (potentialNewTime.isBefore(minTime)) {
-                       potentialNewTime = minTime;
-                    } else if (potentialNewTime.isAfter(maxTime)) {
-                       potentialNewTime = DateTime(newDate.year, newDate.month, newDate.day, 9, 0);
+                    // Reset selected slot when date changes
+                    if (_selectedDate != newDate) {
+                      _selectedSlot = null;
                     }
-                    _selectedTime = potentialNewTime;
-                 } ); 
-                }
+                    _selectedDate = newDate;
+                  });
+                // }
               },
             ),
             const Divider(height: 20),
 
-            // Time Picker
-            Text('Time (9:00 AM - 4:00 PM)', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 150,
-              child: CupertinoTheme(
-                data: CupertinoThemeData(
-                  textTheme: CupertinoTextThemeData(
-                    dateTimePickerTextStyle: TextStyle(fontSize: 18, color: Theme.of(context).textTheme.bodyLarge?.color),
-                  ),
-                ),
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.time,
-                  initialDateTime: _selectedTime ?? DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, 9, 0),
-                  minimumDate: minTime,
-                  maximumDate: maxTime,
-                  minuteInterval: 15,
-                  use24hFormat: false,
-                  onDateTimeChanged: (newTime) {
-                    setState(() {
-                       _selectedTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, newTime.hour, newTime.minute);
-                    });
-                  },
-                ),
+            // --- Available Slots Selection ---
+            Text('Available Slots', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            if (widget.doctor.availableSlots.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10.0),
+                child: Center(child: Text(
+                  'No available slots found for this doctor on the selected date.', // Consider making this dynamic based on date
+                  style: TextStyle(color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
+                )),
+              )
+            else
+              Wrap( // Use Wrap for flexible layout of chips
+                spacing: 8.0, // Horizontal space between chips
+                runSpacing: 8.0, // Vertical space between lines of chips
+                children: widget.doctor.availableSlots.map((slot) {
+                  final isSelected = _selectedSlot == slot;
+                  return ChoiceChip(
+                    label: Text(slot),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedSlot = selected ? slot : null;
+                      });
+                    },
+                    selectedColor: Theme.of(context).primaryColor.withOpacity(0.9),
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    backgroundColor: Colors.grey.shade200,
+                    shape: RoundedRectangleBorder( // Softer corners
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade300,
+                      )
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  );
+                }).toList(), // Convert map result to a list of widgets
               ),
-            ),
             const SizedBox(height: 25),
 
             // Confirmation Button
@@ -605,14 +656,16 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
                 label: Text(_isBooking ? 'Booking...' : 'Confirm Booking'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  textStyle: const TextStyle(fontSize: 16),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), // Rounded button
                 ),
-                onPressed: (_selectedDate != null && _selectedTime != null && !_isBooking) ? _confirmBooking : null,
+                // Disable button if no slot selected or booking is in progress
+                onPressed: (_selectedDate != null && _selectedSlot != null && !_isBooking) ? _confirmBooking : null,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 10), // Bottom padding inside the sheet
           ],
         ),
       ),
