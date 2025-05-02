@@ -196,18 +196,17 @@ class _HomeMapViewState extends State<HomeMapView> {
 
     // Filter doctors who have a valid location
     final doctorsWithLocation = widget.doctors.where((doc) {
-      return doc.location != null &&
-          doc.location!.latitude.isFinite &&
-          doc.location!.longitude.isFinite;
+      // Check if latitude and longitude are valid numbers and not the default 0.0
+      return doc.latitude != 0.0 && doc.longitude != 0.0 &&
+             doc.latitude.isFinite && doc.longitude.isFinite;
     }).toList();
 
     // Create map markers
     final Set<Marker> markers = doctorsWithLocation.map((doctor) {
-      final lat = doctor.location!.latitude;
-      final lng = doctor.location!.longitude;
+      // Use the direct latitude and longitude fields
       return Marker(
-        markerId: MarkerId(doctor.id),
-        position: LatLng(lat, lng),
+        markerId: MarkerId(doctor.id), // Use doctor's unique ID
+        position: LatLng(doctor.latitude, doctor.longitude),
         infoWindow: InfoWindow(
           title: doctor.name,
           snippet: doctor.specialty,
