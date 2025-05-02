@@ -44,8 +44,18 @@ class Doctor {
       imageUrl: data['imageUrl'] ?? '', 
       rating: (data['rating'] ?? 0.0).toDouble(),
       bio: data['bio'] ?? 'N/A',
-      latitude: data['location']?['latitude'] ?? 0.0,
-      longitude: data['location']?['longitude'] ?? 0.0,
+      // Read location: Prioritize GeoPoint, fallback to Map for compatibility
+      latitude: (data['location'] is GeoPoint)
+          ? (data['location'] as GeoPoint).latitude
+          : (data['location'] is Map && data['location']['latitude'] is num)
+              ? (data['location']['latitude'] as num).toDouble()
+              : 0.0, // Default if missing or wrong type
+      longitude: (data['location'] is GeoPoint)
+          ? (data['location'] as GeoPoint).longitude
+          : (data['location'] is Map && data['location']['longitude'] is num)
+              ? (data['location']['longitude'] as num).toDouble()
+              : 0.0, // Default if missing or wrong type
+
       isFavorite: data['isFavorite'] ?? false,
       // Handle potential type issues from Firestore
       workingHours: Map<String, String>.from(data['workingHours'] ?? {}),
@@ -64,10 +74,8 @@ class Doctor {
        'imageUrl': imageUrl,
        'rating': rating,
        'bio': bio, // Corrected key from 'reviews' to 'bio' if that was intended
-       'location': { // Store location as a nested map (GeoPoint is also an option)
-         'latitude': latitude,
-         'longitude': longitude,
-       },
+       // Store location as GeoPoint
+       'location': GeoPoint(latitude, longitude),
        'isFavorite': isFavorite,
        'workingHours': workingHours,
        'availableSlots': availableSlots,
