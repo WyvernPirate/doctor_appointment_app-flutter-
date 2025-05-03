@@ -62,4 +62,3 @@ This project is a Flutter-based mobile application that allows patients to searc
 ## TODO
 - add lat and long to the doctor database so to be able to pick
 - allow map integration on tapping
-- use test cases to determine unseen bugs
