@@ -425,54 +425,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-
-  // --- Logout ( ---
-  Future<void> _handleLogout() async {
-    if (!mounted) return;
-    final theme = Theme.of(context);
-    bool confirmLogout = await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Confirm Logout'),
-              content: const Text('Are you sure you want to logout?'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('Cancel'),
-                  onPressed: () => Navigator.of(context).pop(false),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error,
-                  ), // Use theme error color
-                  child: const Text('Logout'),
-                  onPressed: () => Navigator.of(context).pop(true),
-                ),
-              ],
-            );
-          },
-        ) ?? false;
-
-    if (confirmLogout) {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('loggedInUserId');
-      if (userId != null) {
-        // Consider clearing other user-specific cache if needed
-        await prefs.remove(_prefsKeyAppointments + userId);
-        print("Local appointments cache cleared for user $userId.");
-      }
-      await prefs.remove('loggedInUserId');
-      await prefs.setBool('isGuest', false);
-      if (!mounted) return;
-      // Navigate to login screen and remove all previous routes
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const InitLogin()),
-        (Route<dynamic> route) => false,
-      );
-    }
-  }
-
   // --- Navigation  ---
   void _onItemTapped(int index) {
     // Animate PageView to the selected index
@@ -692,15 +644,10 @@ class _HomeState extends State<Home> {
       appBar: AppBar(
         title: _getAppBarTitle(), // Use dynamic title
         centerTitle: true,
-        actions: [
-          if (!_isGuest && _loggedInUserId != null)
-            IconButton(
-              icon: const Icon(Icons.logout_outlined),
-              tooltip: 'Logout',
-              onPressed: _handleLogout,
-            ),
-          const SizedBox(width: 8),
-        ],
+       
+         actions: const [
+          SizedBox(width: 8),
+         ], 
       ),
 
       // Body method
