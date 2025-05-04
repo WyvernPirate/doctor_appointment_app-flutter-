@@ -52,13 +52,47 @@ class _ProfileCreationState extends State<ProfileCreation> {
   }
 
 
+  // --- Updated Image Picker ---
   Future<void> _pickImage() async {
-     final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _profileImage = File(pickedFile.path);
-      });
+    // Show a dialog or bottom sheet to choose source
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea( // Ensure content is within safe area
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context, ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // If a source was selected, pick the image
+    if (source != null) {
+      try {
+        final XFile? pickedFile = await _picker.pickImage(source: source);
+        if (pickedFile != null && mounted) {
+          setState(() {
+            _profileImage = File(pickedFile.path);
+          });
+        }
+      } catch (e) {
+        _showSnackBar("Could not pick image: $e");
+      }
     }
   }
 
@@ -80,10 +114,10 @@ class _ProfileCreationState extends State<ProfileCreation> {
 
         if (_profileImage != null) {
           String fileName = path.basename(_profileImage!.path);
-          // Use the generatedUserId for storage path
+          // *** UPDATED Storage Path ***
           Reference storageReference = FirebaseStorage.instance
               .ref()
-              .child('profile_images/$generatedUserId/$fileName');
+              .child('userImage/$generatedUserId/$fileName'); // Changed folder name
           UploadTask uploadTask = storageReference.putFile(_profileImage!);
           await uploadTask.whenComplete(() async {
             imageUrl = await storageReference.getDownloadURL();
@@ -175,7 +209,10 @@ class _ProfileCreationState extends State<ProfileCreation> {
                         backgroundImage: _profileImage != null
                             ? FileImage(_profileImage!)
                             : const AssetImage('assets/profile_placeholder.png')
-                                as ImageProvider,
+                                as ImageProvider, // Placeholder
+                        onBackgroundImageError: (exception, stackTrace) {
+                           print("Error loading image preview: $exception");
+                        },
                         child: _profileImage == null
                             ? const Icon(Icons.camera_alt, size: 40)
                             : null,
