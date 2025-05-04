@@ -29,6 +29,7 @@ class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
+  String? _userName;
   static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filtering State ---
@@ -101,6 +102,7 @@ class _HomeState extends State<Home> {
   Future<void> _initializeHome() async {
     await _loadMapStyles(); // Ensure styles are loaded before proceeding
     await _loadUserStatus();
+    await _loadUserName(); 
     if (mounted) {
       _getCurrentLocation(); // Start fetching location early (no await needed here)
       _showWelcomeSnackBar();
@@ -112,6 +114,46 @@ class _HomeState extends State<Home> {
           _errorLoadingDoctors = "User status unclear. Please restart the app.";
         });
       }
+    }
+  }
+
+  // --- Load User Name ---
+  Future<void> _loadUserName() async {
+    if (_isGuest || _loggedInUserId == null) {
+      if (mounted) {
+        setState(() { _userName = "Guest"; });
+      }
+      return;
+    }
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!).get();
+      if (userDoc.exists && userDoc.data() != null && mounted) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _userName = data['name'] as String? ?? 'User'; // Default to 'User' if name is null
+        });
+      } else if (mounted) {
+         setState(() { _userName = 'User'; }); // Default if doc doesn't exist
+      }
+    } catch (e) {
+      print("Error loading user name: $e");
+      if (mounted) {
+         setState(() { _userName = 'User'; }); // Default on error
+      }
+    }
+  }
+
+  // --- Get AppBar Title based on index ---
+  Widget _getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0: // Home
+        return Text(_userName != null ? 'Welcome, $_userName' : 'Doctor Appointment');
+      case 1: // Appointments
+        return const Text('Your Appointments');
+      case 2: // Profile
+        return const Text('Profile');
+      default:
+        return const Text('Doctor Appointment');
     }
   }
 
@@ -648,7 +690,7 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Doctor Appointment'),
+        title: _getAppBarTitle(), // Use dynamic title
         centerTitle: true,
         actions: [
           if (!_isGuest && _loggedInUserId != null)
