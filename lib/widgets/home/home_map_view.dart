@@ -194,16 +194,26 @@ class _HomeMapViewState extends State<HomeMapView> {
       );
     }
 
+    // --- DEBUGGING: Log received doctors ---
+    print("[HomeMapView] Received ${widget.doctors.length} doctors. Checking locations:");
+    widget.doctors.forEach((doc) {
+      print("  - ID: ${doc.id}, Name: ${doc.name}, Lat: ${doc.latitude}, Lng: ${doc.longitude}");
+    });
+    print("--- End of received doctors list ---");
+
     // Filter doctors who have a valid location
     final doctorsWithLocation = widget.doctors.where((doc) {
       // Check if latitude and longitude are valid numbers and not the default 0.0
       return doc.latitude != 0.0 && doc.longitude != 0.0 &&
              doc.latitude.isFinite && doc.longitude.isFinite;
     }).toList();
+    print("[HomeMapView] Filtered down to ${doctorsWithLocation.length} doctors with valid locations."); // Log count after filtering
 
     // Create map markers
     final Set<Marker> markers = doctorsWithLocation.map((doctor) {
       // Use the direct latitude and longitude fields
+      // DEBUG: Confirming marker creation
+      print("  -> Creating marker for ${doctor.name} at ${doctor.latitude}, ${doctor.longitude}");
       return Marker(
         markerId: MarkerId(doctor.id), // Use doctor's unique ID
         position: LatLng(doctor.latitude, doctor.longitude),
