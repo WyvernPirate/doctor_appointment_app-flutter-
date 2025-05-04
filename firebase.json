@@ -1,1 +1,32 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"doctorappointmentapp-9f11a","appId":"1:4258195571:android:53216a74a62412c4ece206","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"doctorappointmentapp-9f11a","configurations":{"android":"1:4258195571:android:53216a74a62412c4ece206","ios":"1:4258195571:ios:99e52dc2dd59fab7ece206","macos":"1:4258195571:ios:99e52dc2dd59fab7ece206","web":"1:4258195571:web:5d426201af99e7dfece206","windows":"1:4258195571:web:73875b2466136043ece206"}}}}}}
+{
+    "flutter":
+    {
+        "platforms":
+        {
+            "android":
+            {
+                "default":
+                {
+                    "projectId":"doctorappointmentapp-9f11a",
+                    "appId":"1:4258195571:android:53216a74a62412c4ece206",
+                    "fileOutput":"android/app/google-services.json"
+                }
+            },
+            "dart":
+            {            
+                "lib/firebase_options.dart":
+                {
+                    "projectId":"doctorappointmentapp-9f11a",
+                    "configurations":
+                    {
+                        "android":"1:4258195571:android:53216a74a62412c4ece206",
+                        "ios":"1:4258195571:ios:99e52dc2dd59fab7ece206",
+                        "macos":"1:4258195571:ios:99e52dc2dd59fab7ece206",
+                        "web":"1:4258195571:web:5d426201af99e7dfece206",
+                        "windows":"1:4258195571:web:73875b2466136043ece206"
+                    }
+                }
+            }
+        }
+    }
+}

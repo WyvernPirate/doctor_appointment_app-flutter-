@@ -1,6 +1,5 @@
 // lib/models/doctor.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; 
 
 class Doctor {
   final String id;
@@ -10,9 +9,12 @@ class Doctor {
   final String phone;
   final String imageUrl;
   final double rating;
+  final double latitude;
+  final double longitude;
   final String bio;
-  final LatLng? location;
-  final bool isFavorite; 
+  final bool isFavorite;
+  final Map<String, String> workingHours; // e.g., {'Monday': '9 AM - 5 PM', ...}
+  final List<String> availableSlots; // e.g., ['09:00', '09:30', '10:00']
 
   Doctor({
     required this.id,
@@ -23,19 +25,16 @@ class Doctor {
     required this.imageUrl,
     required this.rating,
     required this.bio,
-    this.location,
-    this.isFavorite = false, 
+    required this.latitude,
+    required this.longitude,
+    this.isFavorite = false,
+    required this.workingHours,
+    required this.availableSlots,
   });
 
   factory Doctor.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-    // Handle potential GeoPoint for location
-    LatLng? loc;
-    if (data['location'] is GeoPoint) {
-      GeoPoint point = data['location'];
-      loc = LatLng(point.latitude, point.longitude);
-    }
+    print("[Doctor.fromFirestore] Processing ID: ${doc.id}, Raw location data: ${data['location']}, Type: ${data['location']?.runtimeType}"); // Log raw data
 
     return Doctor(
       id: doc.id,
@@ -46,8 +45,31 @@ class Doctor {
       imageUrl: data['imageUrl'] ?? '', 
       rating: (data['rating'] ?? 0.0).toDouble(),
       bio: data['bio'] ?? 'N/A',
-      location: loc,
-      isFavorite: data['isFavorite'] ?? false, 
+      // Read location: Prioritize GeoPoint, fallback to Map
+      latitude: (data['location'] is GeoPoint)
+          ? () {
+              final geoPoint = data['location'] as GeoPoint;
+              print("  -> Reading location as GeoPoint: Lat=${geoPoint.latitude}, Lng=${geoPoint.longitude}");
+              return geoPoint.latitude;
+            }()
+          : (data['location'] is Map && data['location']['latitude'] is num)
+              ? () {
+                  final lat = (data['location']['latitude'] as num).toDouble();
+                  print("  -> Reading location as Map: Lat=$lat");
+                  return lat;
+                }()
+              : 0.0, // Default if missing or wrong type
+      longitude: (data['location'] is GeoPoint)
+          ? (data['location'] as GeoPoint).longitude // Already printed lat/lng above
+          : (data['location'] is Map && data['location']['longitude'] is num)
+              ? (data['location']['longitude'] as num).toDouble() // Already printed lat above, assume lng is ok
+              : 0.0, // Default if missing or wrong type
+
+      isFavorite: data['isFavorite'] ?? false,
+      // Handle potential type issues from Firestore
+      workingHours: Map<String, String>.from(data['workingHours'] ?? {}),
+      // Handle potential type issues from Firestore
+      availableSlots: List<String>.from(data['availableSlots'] ?? []),
     );
   }
 
@@ -60,9 +82,12 @@ class Doctor {
        'phone': phone,
        'imageUrl': imageUrl,
        'rating': rating,
-       'reviews': bio,
-       'location': location != null ? GeoPoint(location!.latitude, location!.longitude) : null,
+       'bio': bio, // Corrected key from 'reviews' to 'bio' if that was intended
+       // Store location as GeoPoint
+       'location': GeoPoint(latitude, longitude),
        'isFavorite': isFavorite,
+       'workingHours': workingHours,
+       'availableSlots': availableSlots,
      };
    }
 }
