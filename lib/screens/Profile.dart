@@ -5,10 +5,11 @@ import '../providers/theme_provider.dart';
 import '/models/DatabaseHelper.dart';
 import 'package:flutter/material.dart';
 import 'EditProfile.dart'; // Import the EditProfile screen
+import 'InitLogin.dart'; // Import for navigation after delete
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Enum to represent profile settings actions
+// Enum to represent profile settings actions (Restored)
 enum ProfileAction {
   editProfile,
   appearance,
@@ -138,8 +139,51 @@ class _ProfileState extends State<Profile> {
   // --- UI Build Method ---
   @override
   Widget build(BuildContext context) {
-    // Return the body directly, without Scaffold or AppBar
-    return _buildProfileBody();
+    // Restore Scaffold and AppBar
+    return Scaffold(
+      // No AppBar title here, as it's handled by Home.dart's dynamic title
+      // AppBar( title: const Text('Profile'), ), // Keep AppBar structure if needed for actions
+      appBar: AppBar(
+       
+        backgroundColor: Colors.transparent, // Make it blend
+        elevation: 0, // No shadow
+        automaticallyImplyLeading: false, // Don't show back button
+        actions: [
+          // Show settings menu only when profile is loaded and not empty
+          if (!_isLoading && _profileData.isNotEmpty)
+            PopupMenuButton<ProfileAction>(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: Theme.of(context).iconTheme.color, // Use theme color
+              ),
+              tooltip: 'Settings',
+              onSelected: _handleProfileAction, // Use the restored handler
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileAction>>[
+                // Edit Profile Option
+                const PopupMenuItem<ProfileAction>(
+                  value: ProfileAction.editProfile,
+                  child: ListTile( leading: Icon(Icons.edit_outlined), title: Text('Edit Profile'), dense: true, contentPadding: EdgeInsets.zero ),
+                ),
+                // Appearance Option
+                const PopupMenuItem<ProfileAction>(
+                  value: ProfileAction.appearance,
+                  child: ListTile( leading: Icon(Icons.palette_outlined), title: Text('Appearance'), dense: true, contentPadding: EdgeInsets.zero ),
+                ),
+                // Location Option
+                const PopupMenuItem<ProfileAction>(
+                  value: ProfileAction.location,
+                  child: ListTile( leading: Icon(Icons.location_on_outlined), title: Text('Location Settings'), dense: true, contentPadding: EdgeInsets.zero ),
+                ),
+                const PopupMenuDivider(),
+                // Delete Account Option
+                PopupMenuItem<ProfileAction>( value: ProfileAction.deleteAccount, child: ListTile( leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), title: Text('Delete Account', style: TextStyle(color: Colors.red.shade700)), dense: true, contentPadding: EdgeInsets.zero ) ),
+              ],
+            ),
+          const SizedBox(width: 8), // Add padding like in Home.dart
+        ],
+      ),
+      body: _buildProfileBody(),
+    );
   }
 
   // --- Helper to Build Body Content ---
@@ -337,7 +381,7 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- Handle Settings Menu Selection ---
-   void _handleProfileAction(ProfileAction selectedAction) {
+   void _handleProfileAction(ProfileAction selectedAction) { // Restored
     switch (selectedAction) {
       case ProfileAction.editProfile:
         // Navigate to EditProfile screen, passing current data
@@ -357,7 +401,7 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- Navigation to Edit Profile ---
-  Future<void> _navigateToEditProfile() async {
+  Future<void> _navigateToEditProfile() async { // Restored
     if (_profileData.isEmpty || !mounted) return;
 
     // Navigate and wait for a result (true if saved successfully)
@@ -373,7 +417,7 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- NEW: Method to show Appearance Dialog ---
-  Future<void> _showAppearanceDialog() async {
+  Future<void> _showAppearanceDialog() async { // Restored
     if (!mounted) return;
 
     // Get the current theme provider (listen: false because we only call methods)
@@ -441,7 +485,7 @@ class _ProfileState extends State<Profile> {
 
 
   // --- Delete Confirmation Dialog ---
-  Future<void> _showDeleteConfirmationDialog() async {
+  Future<void> _showDeleteConfirmationDialog() async { // Restored
     if (!mounted) return;
 
     bool? confirmDelete = await showDialog<bool>(
@@ -491,7 +535,7 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- Account Deletion Logic ---
-  Future<void> _performAccountDeletion() async {
+  Future<void> _performAccountDeletion() async { // Restored
      if (!mounted || _userId == null) return;
 
      // Show loading indicator
@@ -530,10 +574,10 @@ class _ProfileState extends State<Profile> {
        _showSnackBar('Account deleted successfully.');
 
        // 4. Navigate user away (e.g., to login screen)
-       // Make sure InitLogin is imported if you use this
-       // Navigator.of(context).pushAndRemoveUntil(
+       // Use pushAndRemoveUntil to clear the stack and go to login
+       // Navigator.of(context, rootNavigator: true).pushAndRemoveUntil( // Use rootNavigator if needed
        //   MaterialPageRoute(builder: (context) => const InitLogin()),
-       //   (Route<dynamic> route) => false,
+       //   (route) => false,
        // );
 
        if (Navigator.canPop(context)) {
