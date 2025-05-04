@@ -97,13 +97,17 @@ class _EditProfileState extends State<EditProfile> {
       // --- Upload new image if selected ---
       if (_imageFile != null) {
         setState(() { _isUploading = true; }); // Show upload indicator
+        print("Attempting to upload image..."); // Log: Start upload attempt
         try {
           uploadedImageUrl = await _uploadImage(_imageFile!);
+          print("Image upload successful. URL: $uploadedImageUrl"); // Log: Success
         } catch (e) {
+          print("Image upload failed: $e"); // Log: Error
           _showSnackBar('Failed to upload image: ${e.toString()}', isError: true);
           setState(() { _isSaving = false; _isUploading = false; }); // Stop saving on upload error
           return;
         } finally {
+           print("Upload process finished (finally block)."); // Log: Finally reached
            if (mounted) setState(() { _isUploading = false; }); // Hide upload indicator
         }
       }
@@ -118,6 +122,7 @@ class _EditProfileState extends State<EditProfile> {
       };
 
       try {
+        print("Attempting to update Firestore profile data..."); // Log: Firestore update start
         await FirebaseFirestore.instance.collection('users').doc(_userId!).update(updatedData);
 
         if (mounted) {
@@ -126,11 +131,13 @@ class _EditProfileState extends State<EditProfile> {
           Navigator.pop(context, true);
         }
       } catch (e) {
+        print("Firestore profile update failed: $e"); // Log: Firestore error
         print("Error updating profile: $e");
         if (mounted) {
           _showSnackBar('Failed to update profile: ${e.toString()}', isError: true);
         }
       } finally {
+        print("Profile saving process finished (finally block)."); // Log: Save finally reached
         if (mounted) {
           setState(() { _isSaving = false; });
         }
@@ -164,11 +171,35 @@ class _EditProfileState extends State<EditProfile> {
 
     String fileExtension = p.extension(imageFile.path); // Get file extension (e.g., '.jpg')
     String fileName = '$_userId$fileExtension'; // Use user ID as filename
-    Reference storageRef = FirebaseStorage.instance.ref().child('userimages/$fileName');
+    String storagePath = 'userImage/$fileName'; // Corrected path based on previous context
+    Reference storageRef = FirebaseStorage.instance.ref().child(storagePath);
+    print("Uploading to Firebase Storage path: $storagePath"); // Log: Storage path
 
-    UploadTask uploadTask = storageRef.putFile(File(imageFile.path));
+    print("Starting storageRef.putFile..."); // Log: Before putFile
+    // --- Add listeners to UploadTask ---
+    // Explicitly pass empty metadata to potentially avoid native null pointer exception
+    UploadTask uploadTask = storageRef.putFile(
+        File(imageFile.path), SettableMetadata());
+
+    // Listen for state changes, errors, and completion
+    uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+      print('Upload Task state: ${snapshot.state}'); // e.g., running, paused, success
+      print('Progress: ${(snapshot.bytesTransferred / snapshot.totalBytes) * 100} %');
+    }, onError: (error) {
+      // Handle errors explicitly that occur during the stream
+      print("Error during upload stream: $error");
+      // We might need to re-throw or handle the error state here if needed
+      // This might not be caught by the main try-catch if the await hasn't finished
+      if (mounted) {
+         setState(() { _isUploading = false; _isSaving = false; }); // Ensure UI resets on stream error
+      }
+    });
+
     TaskSnapshot snapshot = await uploadTask;
+    // This line is reached ONLY if the upload completes successfully (or errors in a way that completes the future)
+    print("UploadTask completed. State: ${snapshot.state}"); // Log: After putFile await
     String downloadUrl = await snapshot.ref.getDownloadURL();
+    print("Got download URL: $downloadUrl"); // Log: After getDownloadURL
     return downloadUrl;
   }
 
