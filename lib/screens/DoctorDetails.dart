@@ -26,6 +26,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   bool _isLoading = true;
   String? _error;
   String? _loggedInUserId;
+  Set<String> _userFavoriteIds = {}; // State to hold user's favorite doctor IDs
+  final Set<String> _togglingFavorite = {}; // State to prevent rapid toggles
 
   // --- Map Controller ---
 
@@ -38,6 +40,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
   // Combined initialization
   Future<void> _initialize() async {
     await _loadUserId();
+    await _loadUserFavorites(); // Load favorites after getting user ID
     await _fetchDoctorDetails();
   }
 
@@ -48,6 +51,26 @@ class _DoctorDetailsState extends State<DoctorDetails> {
       setState(() {
         _loggedInUserId = prefs.getString('loggedInUserId');
       });
+    }
+  }
+
+  // Load user's favorite doctor IDs
+  Future<void> _loadUserFavorites() async {
+    if (_loggedInUserId == null || !mounted) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!).get();
+      if (userDoc.exists && userDoc.data() != null && mounted) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        if (data.containsKey('favoriteDoctorIds') && data['favoriteDoctorIds'] is List) {
+          setState(() {
+            _userFavoriteIds = List<String>.from(data['favoriteDoctorIds']).toSet();
+          });
+        }
+      }
+    } catch (e) {
+      print("Error loading user favorites in DoctorDetails: $e");
+      // Optionally show a snackbar or handle error
     }
   }
 
@@ -169,6 +192,59 @@ class _DoctorDetailsState extends State<DoctorDetails> {
     );
   }
 
+  // --- Toggle Favorite Status ---
+  Future<void> _toggleFavoriteStatus(String doctorId) async {
+    if (_loggedInUserId == null || _togglingFavorite.contains(doctorId) || !mounted) return;
+
+    final bool isCurrentlyFavorite = _userFavoriteIds.contains(doctorId);
+
+    setState(() {
+      _togglingFavorite.add(doctorId);
+      // Optimistically update UI
+      if (isCurrentlyFavorite) {
+        _userFavoriteIds.remove(doctorId);
+      } else {
+        _userFavoriteIds.add(doctorId);
+      }
+    });
+
+    final userDocRef = FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!);
+    final updateData = isCurrentlyFavorite
+        ? {'favoriteDoctorIds': FieldValue.arrayRemove([doctorId])}
+        : {'favoriteDoctorIds': FieldValue.arrayUnion([doctorId])};
+
+    try {
+      await userDocRef.update(updateData);
+      // Firestore update successful, UI is already updated optimistically
+      if (mounted) {
+        setState(() {
+          _togglingFavorite.remove(doctorId);
+        });
+      }
+    } catch (e) {
+      print("Error toggling favorite in DoctorDetails: $e");
+      // Rollback UI on error
+      if (mounted) {
+        setState(() {
+          if (isCurrentlyFavorite) {
+            // It failed to remove, so add it back to local state
+            _userFavoriteIds.add(doctorId);
+          } else {
+            // It failed to add, so remove it from local state
+            _userFavoriteIds.remove(doctorId);
+          }
+          _togglingFavorite.remove(doctorId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not update favorites: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   // --- Build Method ---
   @override
   Widget build(BuildContext context) {
@@ -178,23 +254,19 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         elevation: 1,
         actions: [
           // Favorite toggle button
-          if (_doctor != null && _loggedInUserId != null) // Only show if logged in
+          if (_doctor != null && _loggedInUserId != null && !_isLoading) // Only show if logged in and doctor loaded
             IconButton(
-              // TODO: Replace _doctor!.isFavorite with actual check from user data
+              // Check if the current doctor's ID is in the user's favorite set
               icon: Icon(
-                // This needs to check against user's favorite list, not doctor model
-                // For now, just showing placeholder logic
-                false ? Icons.favorite : Icons.favorite_border,
-                color: false ? Colors.redAccent : null,
+                _userFavoriteIds.contains(_doctor!.id) ? Icons.favorite : Icons.favorite_border,
+                color: _userFavoriteIds.contains(_doctor!.id) ? Colors.redAccent : null,
               ),
-              tooltip: false ? 'Remove from Favorites' : 'Add to Favorites',
-              onPressed: () {
-                // TODO: Implement favorite toggle logic (update Firestore & local state)
-                // This should call a function similar to _toggleFavoriteStatus in Home.dart
-                // but adapted for this screen's context.
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Favorite toggle for ${_doctor!.name} (Not implemented here)'))
-                );
+              tooltip: _userFavoriteIds.contains(_doctor!.id) ? 'Remove from Favorites' : 'Add to Favorites',
+              // Disable button while toggling
+              onPressed: _togglingFavorite.contains(_doctor!.id)
+                  ? null
+                  : () {
+                      _toggleFavoriteStatus(_doctor!.id);
               },
             )
         ],
