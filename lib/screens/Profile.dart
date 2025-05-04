@@ -5,15 +5,17 @@ import '../providers/theme_provider.dart';
 import '/models/DatabaseHelper.dart';
 import 'package:flutter/material.dart';
 import 'EditProfile.dart'; // Import the EditProfile screen
+import 'InitLogin.dart'; // Import for navigation after delete
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Enum to represent profile settings actions
+// Enum to represent profile settings actions (Restored)
 enum ProfileAction {
   editProfile,
   appearance,
   location,
   deleteAccount,
+  logout,
 }
 
 class Profile extends StatefulWidget {
@@ -27,6 +29,8 @@ class _ProfileState extends State<Profile> {
   Map<String, dynamic> _profileData = {};
   bool _isLoading = true;
   String? _userId;
+
+    static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   @override
   void initState() {
@@ -61,8 +65,8 @@ class _ProfileState extends State<Profile> {
           _profileData = localProfile;
           _isLoading = false;
         });
-        // Optionally trigger a background fetch from Firebase to update local cache
-        // _fetchFromFirebaseAndUpdateLocal();
+        // Trigger a background fetch from Firebase to update local cache
+         _fetchFromFirebaseAndUpdateLocal();
         return;
       }
 
@@ -138,14 +142,12 @@ class _ProfileState extends State<Profile> {
   // --- UI Build Method ---
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent, 
-        elevation: 0, 
-        foregroundColor: Theme.of(context).textTheme.titleLarge?.color, 
-      
+        backgroundColor: Colors.transparent, // Make it blend
+        elevation: 0, // No shadow
+        automaticallyImplyLeading: false, // Don't show back button
         actions: [
           // Show settings menu only when profile is loaded and not empty
           if (!_isLoading && _profileData.isNotEmpty)
@@ -160,53 +162,30 @@ class _ProfileState extends State<Profile> {
                 // Edit Profile Option
                 const PopupMenuItem<ProfileAction>(
                   value: ProfileAction.editProfile,
-                  child: ListTile( 
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Edit Profile'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero, 
-                  ),
+                  child: ListTile( leading: Icon(Icons.edit_outlined), title: Text('Edit Profile'), dense: true, contentPadding: EdgeInsets.zero ),
                 ),
                 // Appearance Option
                 const PopupMenuItem<ProfileAction>(
                   value: ProfileAction.appearance,
-                  child: ListTile(
-                    leading: Icon(Icons.palette_outlined),
-                    title: Text('Appearance'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  child: ListTile( leading: Icon(Icons.palette_outlined), title: Text('Appearance'), dense: true, contentPadding: EdgeInsets.zero ),
                 ),
                 // Location Option
                 const PopupMenuItem<ProfileAction>(
                   value: ProfileAction.location,
-                  child: ListTile(
-                    leading: Icon(Icons.location_on_outlined),
-                    title: Text('Location Settings'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  child: ListTile( leading: Icon(Icons.location_on_outlined), title: Text('Location Settings'), dense: true, contentPadding: EdgeInsets.zero ),
                 ),
-                const PopupMenuDivider(), 
+                const PopupMenuDivider(),
+                // logout Option
+                PopupMenuItem<ProfileAction>( value: ProfileAction.logout, child: ListTile( leading: Icon(Icons.logout_outlined, color: Colors.orange.shade700), title: Text('Logout', style: TextStyle(color: Colors.orange.shade700)), dense: true, contentPadding: EdgeInsets.zero ) ),
+                const PopupMenuDivider(),
                 // Delete Account Option
-                PopupMenuItem<ProfileAction>(
-                  value: ProfileAction.deleteAccount,
-                  child: ListTile(
-                    leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), 
-                    title: Text(
-                      'Delete Account',
-                      style: TextStyle(color: Colors.red.shade700), 
-                    ),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
+                PopupMenuItem<ProfileAction>( value: ProfileAction.deleteAccount, child: ListTile( leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), title: Text('Delete Account', style: TextStyle(color: Colors.red.shade700)), dense: true, contentPadding: EdgeInsets.zero ) ),
               ],
             ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 8), // Add padding like in Home.dart
         ],
       ),
-      body: _buildProfileBody(), 
+      body: _buildProfileBody(),
     );
   }
 
@@ -405,14 +384,12 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- Handle Settings Menu Selection ---
-   void _handleProfileAction(ProfileAction selectedAction) {
+   void _handleProfileAction(ProfileAction selectedAction) { // Restored
     switch (selectedAction) {
       case ProfileAction.editProfile:
-        // Navigate to EditProfile screen, passing current data
         _navigateToEditProfile();
         break;
       case ProfileAction.appearance:
-        // *** MODIFIED: Show the appearance dialog ***
         _showAppearanceDialog();
         break;
       case ProfileAction.location:
@@ -421,11 +398,14 @@ class _ProfileState extends State<Profile> {
       case ProfileAction.deleteAccount:
         _showDeleteConfirmationDialog();
         break;
+      case ProfileAction.logout:
+        _handleLogout();
+        break;
     }
   }
 
   // --- Navigation to Edit Profile ---
-  Future<void> _navigateToEditProfile() async {
+  Future<void> _navigateToEditProfile() async { // Restored
     if (_profileData.isEmpty || !mounted) return;
 
     // Navigate and wait for a result (true if saved successfully)
@@ -441,7 +421,7 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- NEW: Method to show Appearance Dialog ---
-  Future<void> _showAppearanceDialog() async {
+  Future<void> _showAppearanceDialog() async { // Restored
     if (!mounted) return;
 
     // Get the current theme provider (listen: false because we only call methods)
@@ -451,8 +431,6 @@ class _ProfileState extends State<Profile> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        // Use a StatefulWidget builder to manage the radio button state locally if needed,
-        // but for simplicity, we can directly call the provider on change.
         return AlertDialog(
           title: const Text('Appearance'),
           content: Column(
@@ -507,9 +485,55 @@ class _ProfileState extends State<Profile> {
      // No need to call setState here, Provider handles the update
   }
 
+  // --- Logout Logic (Moved from Home.dart) ---
+  Future<void> _handleLogout() async {
+    if (!mounted) return;
+    final theme = Theme.of(context);
+    bool confirmLogout = await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirm Logout'),
+              content: const Text('Are you sure you want to logout?'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error, // Or use orange like the menu item
+                  ),
+                  child: const Text('Logout'),
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+              ],
+            );
+          },
+        ) ?? false;
+
+    if (confirmLogout) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('loggedInUserId'); // Use the state _userId if already loaded
+      if (userId != null) {
+        // Clear user-specific cache
+        await prefs.remove(_prefsKeyAppointments + userId);
+        print("Local appointments cache cleared for user $userId.");
+      }
+      await prefs.remove('loggedInUserId');
+      await prefs.setBool('isGuest', false); // Ensure guest status is reset
+      if (!mounted) return;
+      // Navigate to login screen and remove all previous routes
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const InitLogin()),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
 
   // --- Delete Confirmation Dialog ---
-  Future<void> _showDeleteConfirmationDialog() async {
+  Future<void> _showDeleteConfirmationDialog() async { // Restored
     if (!mounted) return;
 
     bool? confirmDelete = await showDialog<bool>(
@@ -559,7 +583,7 @@ class _ProfileState extends State<Profile> {
   }
 
   // --- Account Deletion Logic ---
-  Future<void> _performAccountDeletion() async {
+  Future<void> _performAccountDeletion() async { // Restored
      if (!mounted || _userId == null) return;
 
      // Show loading indicator
@@ -598,10 +622,10 @@ class _ProfileState extends State<Profile> {
        _showSnackBar('Account deleted successfully.');
 
        // 4. Navigate user away (e.g., to login screen)
-       // Make sure InitLogin is imported if you use this
-       // Navigator.of(context).pushAndRemoveUntil(
+       // Use pushAndRemoveUntil to clear the stack and go to login
+       // Navigator.of(context, rootNavigator: true).pushAndRemoveUntil( // Use rootNavigator if needed
        //   MaterialPageRoute(builder: (context) => const InitLogin()),
-       //   (Route<dynamic> route) => false,
+       //   (route) => false,
        // );
 
        if (Navigator.canPop(context)) {

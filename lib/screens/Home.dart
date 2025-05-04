@@ -29,6 +29,7 @@ class _HomeState extends State<Home> {
   bool _isGuest = false;
   int _selectedIndex = 0;
   String? _loggedInUserId;
+  String? _userName;
   static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filtering State ---
@@ -101,6 +102,7 @@ class _HomeState extends State<Home> {
   Future<void> _initializeHome() async {
     await _loadMapStyles(); // Ensure styles are loaded before proceeding
     await _loadUserStatus();
+    await _loadUserName(); 
     if (mounted) {
       _getCurrentLocation(); // Start fetching location early (no await needed here)
       _showWelcomeSnackBar();
@@ -112,6 +114,46 @@ class _HomeState extends State<Home> {
           _errorLoadingDoctors = "User status unclear. Please restart the app.";
         });
       }
+    }
+  }
+
+  // --- Load User Name ---
+  Future<void> _loadUserName() async {
+    if (_isGuest || _loggedInUserId == null) {
+      if (mounted) {
+        setState(() { _userName = "Guest"; });
+      }
+      return;
+    }
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(_loggedInUserId!).get();
+      if (userDoc.exists && userDoc.data() != null && mounted) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _userName = data['name'] as String? ?? 'User'; // Default to 'User' if name is null
+        });
+      } else if (mounted) {
+         setState(() { _userName = 'User'; }); // Default if doc doesn't exist
+      }
+    } catch (e) {
+      print("Error loading user name: $e");
+      if (mounted) {
+         setState(() { _userName = 'User'; }); // Default on error
+      }
+    }
+  }
+
+  // --- Get AppBar Title based on index ---
+  Widget _getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0: // Home
+        return Text(_userName != null ? 'Welcome, $_userName' : 'Doctor Appointment');
+      case 1: // Appointments
+        return const Text('Your Appointments');
+      case 2: // Profile
+        return const Text('Profile');
+      default:
+        return const Text('Doctor Appointment');
     }
   }
 
@@ -383,54 +425,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-
-  // --- Logout ( ---
-  Future<void> _handleLogout() async {
-    if (!mounted) return;
-    final theme = Theme.of(context);
-    bool confirmLogout = await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Confirm Logout'),
-              content: const Text('Are you sure you want to logout?'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('Cancel'),
-                  onPressed: () => Navigator.of(context).pop(false),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error,
-                  ), // Use theme error color
-                  child: const Text('Logout'),
-                  onPressed: () => Navigator.of(context).pop(true),
-                ),
-              ],
-            );
-          },
-        ) ?? false;
-
-    if (confirmLogout) {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('loggedInUserId');
-      if (userId != null) {
-        // Consider clearing other user-specific cache if needed
-        await prefs.remove(_prefsKeyAppointments + userId);
-        print("Local appointments cache cleared for user $userId.");
-      }
-      await prefs.remove('loggedInUserId');
-      await prefs.setBool('isGuest', false);
-      if (!mounted) return;
-      // Navigate to login screen and remove all previous routes
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const InitLogin()),
-        (Route<dynamic> route) => false,
-      );
-    }
-  }
-
   // --- Navigation  ---
   void _onItemTapped(int index) {
     // Animate PageView to the selected index
@@ -648,17 +642,12 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Doctor Appointment'),
+        title: _getAppBarTitle(), // Use dynamic title
         centerTitle: true,
-        actions: [
-          if (!_isGuest && _loggedInUserId != null)
-            IconButton(
-              icon: const Icon(Icons.logout_outlined),
-              tooltip: 'Logout',
-              onPressed: _handleLogout,
-            ),
-          const SizedBox(width: 8),
-        ],
+       
+         actions: const [
+          SizedBox(width: 8),
+         ], 
       ),
 
       // Body method
