@@ -304,10 +304,7 @@ class _AppointmentsState extends State<Appointments> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Appointments'),
-        centerTitle: true,
-      ),
+      // AppBar removed - Title is now handled by Home.dart
       body: _buildAppointmentList(),
     );
   }
