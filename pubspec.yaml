@@ -81,8 +81,8 @@ flutter:
 
 # Configuration for flutter_launcher_icons (moved to top level)
 flutter_launcher_icons:
-  android: "launcher_icon" # Or true
-  ios: true
+  android: false # Disable Android launcher icon generation
+  ios: false # Disable iOS launcher icon generation
   image_path: "lib/assets/icon/app_icon.png" # Assuming this is your main icon path
   # image_path_android: "assets/icon/app_icon.png" # You can specify platform paths if needed
   adaptive_icon_background: "#ffffff" # Optional: for Android adaptive icons
@@ -93,13 +93,16 @@ flutter_native_splash:
   # The background color of the splash screen
   color: "#FFFFFF" # Example: White background, change hex code as needed
   # The image asset for the splash screen
-  image: lib/assets/splash/splash_image.png # Path to your splash image
+  image: assets/splash/splash_image.png # Correct path relative to project root
+  # Tell Android to fill the screen with the image
+  android_gravity: fill
 
   # Android specific options (optional)
   android_12:
     # Same options as above, but specific to Android 12+
     color: "#FFFFFF"
-    image: lib/assets/splash/splash_image.png
+    image: assets/splash/splash_image.png # Corrected path from previous step
+    android_gravity: fill
     # icon_background_color: "#FFFFFF" # Optional background for the icon itself
 
   # You can disable splash for specific platforms if needed:
