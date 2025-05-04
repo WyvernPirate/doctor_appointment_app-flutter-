@@ -131,8 +131,6 @@ class _HomeMapViewState extends State<HomeMapView> {
       return;
     }
 
- 
-
     // Construct the Google Maps directions URL
     // More universal approach: Use query parameter which works on both platforms
     final query = Uri.encodeComponent('${doctor.latitude},${doctor.longitude}');
@@ -229,11 +227,11 @@ class _HomeMapViewState extends State<HomeMapView> {
     }
 
     // --- DEBUGGING: Log received doctors ---
-    print("[HomeMapView] Received ${widget.doctors.length} doctors. Checking locations:");
-    widget.doctors.forEach((doc) {
-      print("  - ID: ${doc.id}, Name: ${doc.name}, Lat: ${doc.latitude}, Lng: ${doc.longitude}");
-    });
-    print("--- End of received doctors list ---");
+    // print("[HomeMapView] Received ${widget.doctors.length} doctors. Checking locations:");
+    // widget.doctors.forEach((doc) {
+    //   print("  - ID: ${doc.id}, Name: ${doc.name}, Lat: ${doc.latitude}, Lng: ${doc.longitude}");
+    // });
+    // print("--- End of received doctors list ---");
 
     // Filter doctors who have a valid location
     final doctorsWithLocation = widget.doctors.where((doc) {
@@ -241,13 +239,13 @@ class _HomeMapViewState extends State<HomeMapView> {
       return doc.latitude != 0.0 && doc.longitude != 0.0 &&
              doc.latitude.isFinite && doc.longitude.isFinite;
     }).toList();
-    print("[HomeMapView] Filtered down to ${doctorsWithLocation.length} doctors with valid locations."); // Log count after filtering
+    // print("[HomeMapView] Filtered down to ${doctorsWithLocation.length} doctors with valid locations."); // Log count after filtering
 
     // Create map markers
     final Set<Marker> markers = doctorsWithLocation.map((doctor) {
       // Use the direct latitude and longitude fields
       // DEBUG: Confirming marker creation
-      print("  -> Creating marker for ${doctor.name} at ${doctor.latitude}, ${doctor.longitude}");
+      // print("  -> Creating marker for ${doctor.name} at ${doctor.latitude}, ${doctor.longitude}");
       return Marker(
         markerId: MarkerId(doctor.id),
         position: LatLng(doctor.latitude, doctor.longitude),
@@ -314,7 +312,7 @@ class _HomeMapViewState extends State<HomeMapView> {
           style: initialStyleString, // Apply initial style directly
           mapType: MapType.normal,
           myLocationEnabled: true, // Show blue dot for user location
-          myLocationButtonEnabled: true,
+          myLocationButtonEnabled: false, // Disable default button (using custom one below)
           zoomControlsEnabled: true, // Keep zoom controls
           mapToolbarEnabled: false, // Disable default map toolbar (optional)
           compassEnabled: false, // Disable compass (optional)
@@ -323,7 +321,8 @@ class _HomeMapViewState extends State<HomeMapView> {
             if (_mapController == null) {
                  _mapController = controller;
                  print("Map created. Controller assigned.");
-                 // await _applyMapStyleBasedOnTheme(); // No longer needed here, style is set via parameter
+                 // Apply initial style (or style based on theme change)
+                 await _applyMapStyleBasedOnTheme();
 
                  // If user location was already available when map created, move camera
                  if (widget.currentUserPosition != null && mounted) {
@@ -351,13 +350,13 @@ class _HomeMapViewState extends State<HomeMapView> {
         if (_selectedDoctor != null)
           _buildDoctorInfoCard(_selectedDoctor!),
 
-        // --- Custom Location Button (Optional) ---
-        // Add a custom button if you disabled the default one
+        // --- Custom Location Button ---
         Positioned(
-          bottom: 100, // Adjust position as needed
+          bottom: (_selectedDoctor != null) ? 110 : 20, // Adjust position based on card visibility
           right: 16,
           child: FloatingActionButton.small(
             heroTag: 'myLocationButton', // Unique hero tag
+            tooltip: 'My Location',
             onPressed: () {
               if (widget.currentUserPosition != null && _mapController != null) {
                 _mapController!.animateCamera(
@@ -405,6 +404,10 @@ class _HomeMapViewState extends State<HomeMapView> {
                   backgroundImage: doctor.imageUrl.isNotEmpty
                       ? NetworkImage(doctor.imageUrl)
                       : const AssetImage('assets/profile_placeholder.png') as ImageProvider,
+                  onBackgroundImageError: (exception, stackTrace) {
+                    // Optionally handle image loading errors, e.g., show an icon
+                    print("Error loading image for card: $exception");
+                  },
                 ),
                 const SizedBox(width: 12),
                 // Doctor Info Text
@@ -445,4 +448,3 @@ class _HomeMapViewState extends State<HomeMapView> {
     );
   }
 }
-
