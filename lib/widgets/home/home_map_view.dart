@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '/models/doctor.dart';
+import 'package:url_launcher/url_launcher.dart'; // For launching maps/navigation
 import '/screens/DoctorDetails.dart'; // Import necessary screen
 
 class HomeMapView extends StatefulWidget {
@@ -32,6 +33,7 @@ class HomeMapView extends StatefulWidget {
 class _HomeMapViewState extends State<HomeMapView> {
   GoogleMapController? _mapController;
   Brightness? _currentMapBrightness;
+  Doctor? _selectedDoctor; // State to track the selected doctor for the custom info card
 
   @override
   void dispose() {
@@ -117,6 +119,38 @@ class _HomeMapViewState extends State<HomeMapView> {
         print("Error applying default map style: $e");
         _currentMapBrightness = null; // Reset on error
       }
+    }
+  }
+
+  // --- Function to launch navigation ---
+  Future<void> _launchNavigation(Doctor doctor) async {
+    if (widget.currentUserPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Current location not available to start navigation.")),
+      );
+      return;
+    }
+
+ 
+
+    // Construct the Google Maps directions URL
+    // More universal approach: Use query parameter which works on both platforms
+    final query = Uri.encodeComponent('${doctor.latitude},${doctor.longitude}');
+    final mapUrl = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
+
+    // Platform-specific URLs (optional, query usually works well)
+    // final String googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving';
+    // final String appleMapsUrl = 'https://maps.apple.com/?saddr=$originLat,$originLng&daddr=$destLat,$destLng&dirflg=d';
+
+    // Uri uriToLaunch = Uri.parse(Platform.isIOS ? appleMapsUrl : googleMapsUrl); // Requires Platform import
+    Uri uriToLaunch = mapUrl; // Use the query-based URL for broader compatibility
+
+    if (await canLaunchUrl(uriToLaunch)) {
+      await launchUrl(uriToLaunch, mode: LaunchMode.externalApplication);
+    } else {
+      print('Could not launch $uriToLaunch');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open maps application for directions.')));
     }
   }
 
@@ -215,20 +249,19 @@ class _HomeMapViewState extends State<HomeMapView> {
       // DEBUG: Confirming marker creation
       print("  -> Creating marker for ${doctor.name} at ${doctor.latitude}, ${doctor.longitude}");
       return Marker(
-        markerId: MarkerId(doctor.id), // Use doctor's unique ID
+        markerId: MarkerId(doctor.id),
         position: LatLng(doctor.latitude, doctor.longitude),
-        infoWindow: InfoWindow(
-          title: doctor.name,
-          snippet: doctor.specialty,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DoctorDetails(doctorId: doctor.id),
-              ),
-            );
-          },
-        ),
+        // Remove the default infoWindow
+        // infoWindow: InfoWindow(...),
+        onTap: () {
+          // When marker is tapped, update the selected doctor state
+          // and potentially move the camera slightly to ensure the card is visible
+          setState(() {
+            _selectedDoctor = doctor;
+          });
+          _mapController?.animateCamera(CameraUpdate.newLatLng(
+              LatLng(doctor.latitude, doctor.longitude))); // Center on tapped marker
+        },
         icon: BitmapDescriptor.defaultMarkerWithHue(
           BitmapDescriptor.hueAzure,
         ),
@@ -268,40 +301,148 @@ class _HomeMapViewState extends State<HomeMapView> {
       // If both are null, initialStyleString remains null (default map)
     }
 
-    // --- Map Widget ---
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: initialCameraTarget,
-        zoom: initialZoom,
-      ),
-      markers: markers,
-      style: initialStyleString, // Apply initial style directly
-      mapType: MapType.normal,
-      myLocationEnabled: true, // Show blue dot for user location
-      myLocationButtonEnabled: true,
-      zoomControlsEnabled: true,
-      mapToolbarEnabled: true,
-      onMapCreated: (GoogleMapController controller) async {
-        // Only assign controller once
-        if (_mapController == null) {
-             _mapController = controller;
-             print("Map created. Controller assigned.");
-             // await _applyMapStyleBasedOnTheme(); // No longer needed here, style is set via parameter
+    // --- UI Structure with Stack for Overlay ---
+    return Stack(
+      children: [
+        // --- Map Widget ---
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: initialCameraTarget,
+            zoom: initialZoom,
+          ),
+          markers: markers,
+          style: initialStyleString, // Apply initial style directly
+          mapType: MapType.normal,
+          myLocationEnabled: true, // Show blue dot for user location
+          myLocationButtonEnabled: true,
+          zoomControlsEnabled: true, // Keep zoom controls
+          mapToolbarEnabled: false, // Disable default map toolbar (optional)
+          compassEnabled: false, // Disable compass (optional)
+          onMapCreated: (GoogleMapController controller) async {
+            // Only assign controller once
+            if (_mapController == null) {
+                 _mapController = controller;
+                 print("Map created. Controller assigned.");
+                 // await _applyMapStyleBasedOnTheme(); // No longer needed here, style is set via parameter
 
-             // If user location was already available when map created, move camera
-             if (widget.currentUserPosition != null && mounted) {
-                 print("Animating camera to user location on map creation.");
-                 controller.animateCamera(
-                    CameraUpdate.newLatLngZoom(
+                 // If user location was already available when map created, move camera
+                 if (widget.currentUserPosition != null && mounted) {
+                     print("Animating camera to user location on map creation.");
+                     controller.animateCamera(
+                        CameraUpdate.newLatLngZoom(
+                        LatLng(widget.currentUserPosition!.latitude, widget.currentUserPosition!.longitude),
+                        14.0,
+                        ),
+                    );
+                 } else {
+                     print("User location not available on map creation, using default position.");
+                 }
+            }
+          },
+          onTap: (_) {
+            // When tapping anywhere else on the map, deselect the doctor
+            setState(() {
+              _selectedDoctor = null;
+            });
+          },
+        ),
+
+        // --- Custom Doctor Info Card Overlay ---
+        if (_selectedDoctor != null)
+          _buildDoctorInfoCard(_selectedDoctor!),
+
+        // --- Custom Location Button (Optional) ---
+        // Add a custom button if you disabled the default one
+        Positioned(
+          bottom: 100, // Adjust position as needed
+          right: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'myLocationButton', // Unique hero tag
+            onPressed: () {
+              if (widget.currentUserPosition != null && _mapController != null) {
+                _mapController!.animateCamera(
+                  CameraUpdate.newLatLngZoom(
                     LatLng(widget.currentUserPosition!.latitude, widget.currentUserPosition!.longitude),
                     14.0,
-                    ),
+                  ),
                 );
-             } else {
-                 print("User location not available on map creation, using default position.");
-             }
-        }
-      },
+              }
+            },
+            backgroundColor: Theme.of(context).cardColor,
+            child: Icon(Icons.my_location, color: Theme.of(context).primaryColor),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Widget Builder for the Custom Info Card ---
+  Widget _buildDoctorInfoCard(Doctor doctor) {
+    final theme = Theme.of(context);
+    return Positioned(
+      bottom: 20, // Position the card at the bottom
+      left: 15,
+      right: 15,
+      child: GestureDetector(
+        onTap: () {
+          // Allow tapping the card to go to details screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => DoctorDetails(doctorId: doctor.id)),
+          );
+        },
+        child: Card(
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Doctor Image
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: doctor.imageUrl.isNotEmpty
+                      ? NetworkImage(doctor.imageUrl)
+                      : const AssetImage('assets/profile_placeholder.png') as ImageProvider,
+                ),
+                const SizedBox(width: 12),
+                // Doctor Info Text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(doctor.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text(doctor.specialty, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 18),
+                          const SizedBox(width: 4),
+                          Text(doctor.rating.toStringAsFixed(1), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 6),
+                          Icon(Icons.location_on, color: Colors.grey.shade500, size: 16),
+                          Expanded(child: Text(doctor.address, style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade600), overflow: TextOverflow.ellipsis, maxLines: 1)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Directions Button
+                IconButton(
+                  icon: Icon(Icons.directions, color: theme.primaryColor, size: 30),
+                  tooltip: 'Get Directions',
+                  onPressed: () => _launchNavigation(doctor),
+                ),
+              ],
+            ),
+          )
+          ),
+      ),
     );
   }
 }
+
