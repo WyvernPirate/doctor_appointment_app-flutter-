@@ -54,6 +54,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.6
 
 
 # For information on the generic Dart part of this file, see the
@@ -80,9 +81,23 @@ flutter:
 
 # Configuration for flutter_launcher_icons (moved to top level)
 flutter_launcher_icons:
-  android: "launcher_icon" # Or true
-  ios: true
-  image_path: "lib/assets/icon/app_icon.png" # Assuming this is your main icon path
+  android: true # Re-enable Android icon generation (or "launcher_icon")
+  ios: true # Re-enable iOS icon generation
+  image_path: "assets/icon/app_icon.png" # Assuming this is your main icon path
   # image_path_android: "assets/icon/app_icon.png" # You can specify platform paths if needed
   adaptive_icon_background: "#ffffff" # Optional: for Android adaptive icons
   # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png" # Optional
+
+# Configuration for flutter_native_splash
+flutter_native_splash:
+  # The background color of the splash screen
+  color: "#FFFFFF" # Example: White background, change hex code as needed
+  # The image asset for the splash screen
+  image: assets/splash/splash_image.png # Correct path relative to project root
+  # Tell Android to fill the screen with the image
+  android_gravity: fill
+
+  # You can disable splash for specific platforms if needed:
+  # android: false
+  # ios: false
+  # web: false

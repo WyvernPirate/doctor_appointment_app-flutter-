@@ -162,6 +162,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         return _BookingBottomSheetContent(
           doctor: _doctor!,
           userId: _loggedInUserId!,
+          // Pass a callback to refresh doctor data after booking
+          onBookingConfirmed: _fetchDoctorDetails,
         );
       },
     );
@@ -176,17 +178,22 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         elevation: 1,
         actions: [
           // Favorite toggle button
-          if (_doctor != null)
+          if (_doctor != null && _loggedInUserId != null) // Only show if logged in
             IconButton(
+              // TODO: Replace _doctor!.isFavorite with actual check from user data
               icon: Icon(
-                _doctor!.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: _doctor!.isFavorite ? Colors.redAccent : null,
+                // This needs to check against user's favorite list, not doctor model
+                // For now, just showing placeholder logic
+                false ? Icons.favorite : Icons.favorite_border,
+                color: false ? Colors.redAccent : null,
               ),
-              tooltip: _doctor!.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+              tooltip: false ? 'Remove from Favorites' : 'Add to Favorites',
               onPressed: () {
                 // TODO: Implement favorite toggle logic (update Firestore & local state)
+                // This should call a function similar to _toggleFavoriteStatus in Home.dart
+                // but adapted for this screen's context.
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Favorite toggle for ${_doctor!.name} (Not implemented)'))
+                  SnackBar(content: Text('Favorite toggle for ${_doctor!.name} (Not implemented here)'))
                 );
               },
             )
@@ -196,7 +203,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
       // --- Floating Action Button for Booking ---
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _isLoading || _doctor == null
+      floatingActionButton: _isLoading || _doctor == null || _loggedInUserId == null // Disable if guest
           ? null
           : FloatingActionButton.extended(
               onPressed: _handleBooking,
@@ -447,10 +454,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 class _BookingBottomSheetContent extends StatefulWidget {
   final Doctor doctor;
   final String userId;
+  final VoidCallback onBookingConfirmed; // Callback to refresh parent
 
   const _BookingBottomSheetContent({
     required this.doctor,
     required this.userId,
+    required this.onBookingConfirmed,
   });
 
   @override
@@ -521,11 +530,63 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
       'createdAt': FieldValue.serverTimestamp(), // Record creation time
     };
 
+    // --- Pre-Transaction Check 1: Does user already have ANY appointment at this time? ---
     try {
-      await FirebaseFirestore.instance.collection('appointments').add(appointmentData);
+      final existingAppointments = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('userId', isEqualTo: widget.userId)
+          .where('appointmentTime', isEqualTo: Timestamp.fromDate(bookingDateTime))
+          .limit(1) // We only need to know if at least one exists
+          .get();
 
+      if (existingAppointments.docs.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('You already have an appointment scheduled at this time.'), backgroundColor: Colors.orange),
+        );
+        setState(() { _isBooking = false; }); // Reset booking state
+        return; // Stop the booking process
+      }
+    } catch (e) {
+       print("Error checking existing user appointments: $e");
+       // Optionally handle this error, maybe allow proceeding with caution or show specific error
+    }
+
+    // --- Use Firestore Transaction ---
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // Get a reference to the doctor's document
+        DocumentReference doctorRef = FirebaseFirestore.instance.collection('doctors').doc(widget.doctor.id);
+
+        // Get a reference for the new appointment document (Firestore generates ID)
+        DocumentReference newAppointmentRef = FirebaseFirestore.instance.collection('appointments').doc();
+
+        // --- Transaction Check 2: Read doctor's current data to ensure slot is still available ---
+        DocumentSnapshot doctorSnapshot = await transaction.get(doctorRef);
+        if (!doctorSnapshot.exists) {
+          throw Exception("Doctor not found."); // Or handle differently
+        }
+        List<String> currentSlots = List<String>.from(doctorSnapshot.get('availableSlots') ?? []);
+
+        if (!currentSlots.contains(_selectedSlot)) {
+          // Slot is no longer available! Abort the transaction.
+          throw FirebaseException(
+              plugin: 'Firestore',
+              code: 'unavailable-slot',
+              message: 'Sorry, this time slot was just booked by someone else.');
+        }
+
+        // --- Slot is available, proceed with booking ---
+        // 1. Create the new appointment
+        transaction.set(newAppointmentRef, appointmentData);
+        // 2. Remove the slot from the doctor's availability
+        transaction.update(doctorRef, {'availableSlots': FieldValue.arrayRemove([_selectedSlot])});
+      });
+
+      // --- Transaction Successful ---
       if (mounted) {
         Navigator.pop(context); // Close the bottom sheet
+        widget.onBookingConfirmed(); // Call the callback to refresh parent
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Booking confirmed for ${widget.doctor.name} on ${DateFormat.yMd().add_jm().format(bookingDateTime)}'),
@@ -534,18 +595,27 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
           ),
         );
       }
-    } catch (e) {
-      print("Error booking appointment: $e");
+    } catch (e) { // Catches errors from the transaction
+      // --- Transaction Failed (or pre-check error) ---
+      print("Error during booking transaction: $e");
       if (mounted) {
+        String errorMessage = 'Failed to book appointment. Please try again.';
+        // Check if it was our specific "unavailable-slot" error
+        if (e is FirebaseException && e.code == 'unavailable-slot') {
+          errorMessage = e.message ?? 'Sorry, this time slot is no longer available.';
+        } else if (e.toString().contains("Doctor not found")) {
+           errorMessage = 'Could not find doctor details to confirm booking.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to book appointment: ${e.toString()}'),
+            content: Text(errorMessage),
             duration: const Duration(seconds: 4),
             backgroundColor: Colors.red,
           ),
         );
       }
     } finally {
+      // --- Always reset booking state ---
       if (mounted) {
         setState(() { _isBooking = false; });
       }
@@ -606,6 +676,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
             // --- Available Slots Selection ---
             Text('Available Slots', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
+            // Use the latest doctor data passed to the widget
             if (widget.doctor.availableSlots.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
