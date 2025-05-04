@@ -162,6 +162,8 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         return _BookingBottomSheetContent(
           doctor: _doctor!,
           userId: _loggedInUserId!,
+          // Pass a callback to refresh doctor data after booking
+          onBookingConfirmed: _fetchDoctorDetails,
         );
       },
     );
@@ -176,17 +178,22 @@ class _DoctorDetailsState extends State<DoctorDetails> {
         elevation: 1,
         actions: [
           // Favorite toggle button
-          if (_doctor != null)
+          if (_doctor != null && _loggedInUserId != null) // Only show if logged in
             IconButton(
+              // TODO: Replace _doctor!.isFavorite with actual check from user data
               icon: Icon(
-                _doctor!.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: _doctor!.isFavorite ? Colors.redAccent : null,
+                // This needs to check against user's favorite list, not doctor model
+                // For now, just showing placeholder logic
+                false ? Icons.favorite : Icons.favorite_border,
+                color: false ? Colors.redAccent : null,
               ),
-              tooltip: _doctor!.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+              tooltip: false ? 'Remove from Favorites' : 'Add to Favorites',
               onPressed: () {
                 // TODO: Implement favorite toggle logic (update Firestore & local state)
+                // This should call a function similar to _toggleFavoriteStatus in Home.dart
+                // but adapted for this screen's context.
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Favorite toggle for ${_doctor!.name} (Not implemented)'))
+                  SnackBar(content: Text('Favorite toggle for ${_doctor!.name} (Not implemented here)'))
                 );
               },
             )
@@ -196,7 +203,7 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 
       // --- Floating Action Button for Booking ---
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _isLoading || _doctor == null
+      floatingActionButton: _isLoading || _doctor == null || _loggedInUserId == null // Disable if guest
           ? null
           : FloatingActionButton.extended(
               onPressed: _handleBooking,
@@ -447,10 +454,12 @@ class _DoctorDetailsState extends State<DoctorDetails> {
 class _BookingBottomSheetContent extends StatefulWidget {
   final Doctor doctor;
   final String userId;
+  final VoidCallback onBookingConfirmed; // Callback to refresh parent
 
   const _BookingBottomSheetContent({
     required this.doctor,
     required this.userId,
+    required this.onBookingConfirmed,
   });
 
   @override
@@ -508,7 +517,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
     }
 
     if (!mounted) return;
-    setState(() { _isBooking = true; });
+    setState(() { _isBooking = true; }); // Set booking state
 
     final appointmentData = {
       'doctorId': widget.doctor.id,
@@ -521,11 +530,32 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
       'createdAt': FieldValue.serverTimestamp(), // Record creation time
     };
 
+    // --- Use Firestore Transaction ---
     try {
-      await FirebaseFirestore.instance.collection('appointments').add(appointmentData);
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // Get a reference to the doctor's document
+        DocumentReference doctorRef = FirebaseFirestore.instance.collection('doctors').doc(widget.doctor.id);
 
+        // Get a reference for the new appointment document (Firestore generates ID)
+        DocumentReference newAppointmentRef = FirebaseFirestore.instance.collection('appointments').doc();
+
+        // 1. Create the new appointment document within the transaction
+        transaction.set(newAppointmentRef, appointmentData);
+
+        // 2. Update the doctor's document to remove the slot within the transaction
+        transaction.update(doctorRef, {
+          'availableSlots': FieldValue.arrayRemove([_selectedSlot])
+        });
+
+        // Note: You could optionally read the doctor's doc first within the transaction
+        // if you needed to perform checks before updating, but for just removing
+        // an item, it's usually not necessary.
+      });
+
+      // --- Transaction Successful ---
       if (mounted) {
         Navigator.pop(context); // Close the bottom sheet
+        widget.onBookingConfirmed(); // Call the callback to refresh parent
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Booking confirmed for ${widget.doctor.name} on ${DateFormat.yMd().add_jm().format(bookingDateTime)}'),
@@ -534,7 +564,8 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
           ),
         );
       }
-    } catch (e) {
+    } catch (e) { // Catches errors from the transaction
+      // --- Transaction Failed ---
       print("Error booking appointment: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -546,6 +577,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
         );
       }
     } finally {
+      // --- Always reset booking state ---
       if (mounted) {
         setState(() { _isBooking = false; });
       }
@@ -606,6 +638,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
             // --- Available Slots Selection ---
             Text('Available Slots', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
+            // Use the latest doctor data passed to the widget
             if (widget.doctor.availableSlots.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
