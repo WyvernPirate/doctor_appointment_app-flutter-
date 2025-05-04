@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '/models/DatabaseHelper.dart';
 import 'package:flutter/material.dart';
+import 'EditProfile.dart'; // Import the EditProfile screen
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -94,7 +95,15 @@ class _ProfileState extends State<Profile> {
             _isLoading = false; // Ensure loading stops after fetch
           });
           // Update local database in the background
-          await _dbHelper.insertUserProfile(data);
+          // --- Convert Timestamps before saving locally ---
+          Map<String, dynamic> dataForLocalDb = Map.from(data); // Create a mutable copy
+          dataForLocalDb.updateAll((key, value) {
+            if (value is Timestamp) {
+              return value.toDate().toIso8601String(); // Convert Timestamp to ISO 8601 String
+            }
+            return value; // Keep other types as they are
+          });
+          await _dbHelper.insertUserProfile(dataForLocalDb); // Save the converted data
         } else if (mounted) {
           _showSnackBar('User data not found in database.');
           setState(() { _isLoading = false; });
@@ -399,7 +408,8 @@ class _ProfileState extends State<Profile> {
    void _handleProfileAction(ProfileAction selectedAction) {
     switch (selectedAction) {
       case ProfileAction.editProfile:
-        _showSnackBar('Edit Profile selected (Not Implemented)');
+        // Navigate to EditProfile screen, passing current data
+        _navigateToEditProfile();
         break;
       case ProfileAction.appearance:
         // *** MODIFIED: Show the appearance dialog ***
@@ -411,6 +421,22 @@ class _ProfileState extends State<Profile> {
       case ProfileAction.deleteAccount:
         _showDeleteConfirmationDialog();
         break;
+    }
+  }
+
+  // --- Navigation to Edit Profile ---
+  Future<void> _navigateToEditProfile() async {
+    if (_profileData.isEmpty || !mounted) return;
+
+    // Navigate and wait for a result (true if saved successfully)
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => EditProfile(initialProfileData: _profileData)),
+    );
+
+    // If the profile was saved successfully (result is true), refresh the data
+    if (result == true) {
+      _fetchProfileData(); // Re-fetch data to show updates
     }
   }
 
