@@ -15,6 +15,7 @@ enum ProfileAction {
   appearance,
   location,
   deleteAccount,
+  logout,
 }
 
 class Profile extends StatefulWidget {
@@ -28,6 +29,8 @@ class _ProfileState extends State<Profile> {
   Map<String, dynamic> _profileData = {};
   bool _isLoading = true;
   String? _userId;
+
+    static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   @override
   void initState() {
@@ -62,8 +65,8 @@ class _ProfileState extends State<Profile> {
           _profileData = localProfile;
           _isLoading = false;
         });
-        // Optionally trigger a background fetch from Firebase to update local cache
-        // _fetchFromFirebaseAndUpdateLocal();
+        // Trigger a background fetch from Firebase to update local cache
+         _fetchFromFirebaseAndUpdateLocal();
         return;
       }
 
@@ -139,12 +142,9 @@ class _ProfileState extends State<Profile> {
   // --- UI Build Method ---
   @override
   Widget build(BuildContext context) {
-    // Restore Scaffold and AppBar
+    
     return Scaffold(
-      // No AppBar title here, as it's handled by Home.dart's dynamic title
-      // AppBar( title: const Text('Profile'), ), // Keep AppBar structure if needed for actions
       appBar: AppBar(
-       
         backgroundColor: Colors.transparent, // Make it blend
         elevation: 0, // No shadow
         automaticallyImplyLeading: false, // Don't show back button
@@ -154,10 +154,10 @@ class _ProfileState extends State<Profile> {
             PopupMenuButton<ProfileAction>(
               icon: Icon(
                 Icons.settings_outlined,
-                color: Theme.of(context).iconTheme.color, // Use theme color
+                color: Theme.of(context).iconTheme.color, 
               ),
               tooltip: 'Settings',
-              onSelected: _handleProfileAction, // Use the restored handler
+              onSelected: _handleProfileAction, 
               itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileAction>>[
                 // Edit Profile Option
                 const PopupMenuItem<ProfileAction>(
@@ -174,6 +174,9 @@ class _ProfileState extends State<Profile> {
                   value: ProfileAction.location,
                   child: ListTile( leading: Icon(Icons.location_on_outlined), title: Text('Location Settings'), dense: true, contentPadding: EdgeInsets.zero ),
                 ),
+                const PopupMenuDivider(),
+                // logout Option
+                PopupMenuItem<ProfileAction>( value: ProfileAction.logout, child: ListTile( leading: Icon(Icons.logout_outlined, color: Colors.orange.shade700), title: Text('Logout', style: TextStyle(color: Colors.orange.shade700)), dense: true, contentPadding: EdgeInsets.zero ) ),
                 const PopupMenuDivider(),
                 // Delete Account Option
                 PopupMenuItem<ProfileAction>( value: ProfileAction.deleteAccount, child: ListTile( leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), title: Text('Delete Account', style: TextStyle(color: Colors.red.shade700)), dense: true, contentPadding: EdgeInsets.zero ) ),
@@ -384,11 +387,9 @@ class _ProfileState extends State<Profile> {
    void _handleProfileAction(ProfileAction selectedAction) { // Restored
     switch (selectedAction) {
       case ProfileAction.editProfile:
-        // Navigate to EditProfile screen, passing current data
         _navigateToEditProfile();
         break;
       case ProfileAction.appearance:
-        // *** MODIFIED: Show the appearance dialog ***
         _showAppearanceDialog();
         break;
       case ProfileAction.location:
@@ -396,6 +397,9 @@ class _ProfileState extends State<Profile> {
         break;
       case ProfileAction.deleteAccount:
         _showDeleteConfirmationDialog();
+        break;
+      case ProfileAction.logout:
+        _handleLogout();
         break;
     }
   }
@@ -427,8 +431,6 @@ class _ProfileState extends State<Profile> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        // Use a StatefulWidget builder to manage the radio button state locally if needed,
-        // but for simplicity, we can directly call the provider on change.
         return AlertDialog(
           title: const Text('Appearance'),
           content: Column(
@@ -483,6 +485,52 @@ class _ProfileState extends State<Profile> {
      // No need to call setState here, Provider handles the update
   }
 
+  // --- Logout Logic (Moved from Home.dart) ---
+  Future<void> _handleLogout() async {
+    if (!mounted) return;
+    final theme = Theme.of(context);
+    bool confirmLogout = await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirm Logout'),
+              content: const Text('Are you sure you want to logout?'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error, // Or use orange like the menu item
+                  ),
+                  child: const Text('Logout'),
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+              ],
+            );
+          },
+        ) ?? false;
+
+    if (confirmLogout) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('loggedInUserId'); // Use the state _userId if already loaded
+      if (userId != null) {
+        // Clear user-specific cache
+        await prefs.remove(_prefsKeyAppointments + userId);
+        print("Local appointments cache cleared for user $userId.");
+      }
+      await prefs.remove('loggedInUserId');
+      await prefs.setBool('isGuest', false); // Ensure guest status is reset
+      if (!mounted) return;
+      // Navigate to login screen and remove all previous routes
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const InitLogin()),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
 
   // --- Delete Confirmation Dialog ---
   Future<void> _showDeleteConfirmationDialog() async { // Restored
