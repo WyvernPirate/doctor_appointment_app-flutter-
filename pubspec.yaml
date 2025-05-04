@@ -81,9 +81,9 @@ flutter:
 
 # Configuration for flutter_launcher_icons (moved to top level)
 flutter_launcher_icons:
-  android: false # Disable Android launcher icon generation
-  ios: false # Disable iOS launcher icon generation
-  image_path: "lib/assets/icon/app_icon.png" # Assuming this is your main icon path
+  android: true # Re-enable Android icon generation (or "launcher_icon")
+  ios: true # Re-enable iOS icon generation
+  image_path: "assets/icon/app_icon.png" # Assuming this is your main icon path
   # image_path_android: "assets/icon/app_icon.png" # You can specify platform paths if needed
   adaptive_icon_background: "#ffffff" # Optional: for Android adaptive icons
   # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png" # Optional
