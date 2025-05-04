@@ -34,6 +34,7 @@ class Doctor {
 
   factory Doctor.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    print("[Doctor.fromFirestore] Processing ID: ${doc.id}, Raw location data: ${data['location']}, Type: ${data['location']?.runtimeType}"); // Log raw data
 
     return Doctor(
       id: doc.id,
@@ -44,16 +45,24 @@ class Doctor {
       imageUrl: data['imageUrl'] ?? '', 
       rating: (data['rating'] ?? 0.0).toDouble(),
       bio: data['bio'] ?? 'N/A',
-      // Read location: Prioritize GeoPoint, fallback to Map for compatibility
+      // Read location: Prioritize GeoPoint, fallback to Map
       latitude: (data['location'] is GeoPoint)
-          ? (data['location'] as GeoPoint).latitude
+          ? () {
+              final geoPoint = data['location'] as GeoPoint;
+              print("  -> Reading location as GeoPoint: Lat=${geoPoint.latitude}, Lng=${geoPoint.longitude}");
+              return geoPoint.latitude;
+            }()
           : (data['location'] is Map && data['location']['latitude'] is num)
-              ? (data['location']['latitude'] as num).toDouble()
+              ? () {
+                  final lat = (data['location']['latitude'] as num).toDouble();
+                  print("  -> Reading location as Map: Lat=$lat");
+                  return lat;
+                }()
               : 0.0, // Default if missing or wrong type
       longitude: (data['location'] is GeoPoint)
-          ? (data['location'] as GeoPoint).longitude
+          ? (data['location'] as GeoPoint).longitude // Already printed lat/lng above
           : (data['location'] is Map && data['location']['longitude'] is num)
-              ? (data['location']['longitude'] as num).toDouble()
+              ? (data['location']['longitude'] as num).toDouble() // Already printed lat above, assume lng is ok
               : 0.0, // Default if missing or wrong type
 
       isFavorite: data['isFavorite'] ?? false,
