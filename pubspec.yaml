@@ -31,17 +31,17 @@ dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.2.2
-  google_maps_flutter: ^2.5.3 
-  firebase_core_dart: ^1.0.1
+  google_maps_flutter: ^2.5.3
+  firebase_core_dart: ^1.0.1 # Note: Consider if you need this AND firebase_core
   sqflite: ^2.3.0
   path: ^1.9.0
   cupertino_icons: ^1.0.8
   flutter_signin_button: ^2.0.0
   firebase_core: 2.32.0
+  firebase_storage: ^11.6.5
   flutter_dotenv: ^5.1.0
   image_picker: ^1.1.2
   cloud_firestore: ^4.17.5
-  firebase_storage: ^11.6.5
   path_provider: ^2.1.5
   crypto: ^3.0.3
   url_launcher: ^6.3.1
@@ -52,7 +52,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^5.0.0 # Consider updating to latest (e.g., ^3.0.0 or ^4.0.0)
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.6
 
@@ -70,7 +70,9 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-   - lib/assets/
+   - lib/assets/ # Be specific if possible, e.g., assets/images/, assets/icons/
+   - assets/icon/ # For launcher icon source
+   - assets/splash/ # For splash image source
    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -79,25 +81,35 @@ flutter:
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 
-# Configuration for flutter_launcher_icons (moved to top level)
+# Configuration for flutter_launcher_icons
 flutter_launcher_icons:
-  android: true # Re-enable Android icon generation (or "launcher_icon")
-  ios: true # Re-enable iOS icon generation
-  image_path: "assets/icon/app_icon.png" # Assuming this is your main icon path
-  # image_path_android: "assets/icon/app_icon.png" # You can specify platform paths if needed
-  adaptive_icon_background: "#ffffff" # Optional: for Android adaptive icons
-  # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png" # Optional
+  android: true # Generate Android launcher icons
+  ios: true # Generate iOS launcher icons
+  image_path: "assets/icon/app_icon.png" # Path to your source icon
+  min_sdk_android: 21 # Optional: Ensures compatibility with older Android versions
+  adaptive_icon_background: "#FFFFFF" # Optional: Background for Android adaptive icons
+  # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png" # Optional: Foreground for Android adaptive icons
 
 # Configuration for flutter_native_splash
 flutter_native_splash:
   # The background color of the splash screen
-  color: "#FFFFFF" # Example: White background, change hex code as needed
+  color: "#FFFFFF" # Example: White background
   # The image asset for the splash screen
-  image: assets/splash/splash_image.png # Correct path relative to project root
+  image: assets/splash/splash_image.png # Path relative to project root
   # Tell Android to fill the screen with the image
   android_gravity: fill
 
+  # Optional: Dark mode splash screen
+  # color_dark: "#000000"
+  # image_dark: assets/splash/splash_image_dark.png
+
+  # Android 12+ specific options (Important for overriding default icon behavior)
+  android_12:
+    color: "#FFFFFF" # Match the main color
+    image: assets/splash/splash_image.png # Match the main image path
+    # icon_background_color: "#FFFFFF" # Optional background for the icon itself if needed
+
   # You can disable splash for specific platforms if needed:
-  # android: false
-  # ios: false
+  # android: true
+  # ios: true
   # web: false
