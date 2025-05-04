@@ -138,70 +138,8 @@ class _ProfileState extends State<Profile> {
   // --- UI Build Method ---
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-     
-      
-        actions: [
-          // Show settings menu only when profile is loaded and not empty
-          if (!_isLoading && _profileData.isNotEmpty)
-            PopupMenuButton<ProfileAction>(
-              icon: Icon(
-                Icons.settings_outlined,
-                color: Theme.of(context).iconTheme.color, 
-              ),
-              tooltip: 'Settings',
-              onSelected: _handleProfileAction, 
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileAction>>[
-                // Edit Profile Option
-                const PopupMenuItem<ProfileAction>(
-                  value: ProfileAction.editProfile,
-                  child: ListTile( 
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Edit Profile'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero, 
-                  ),
-                ),
-                // Appearance Option
-                const PopupMenuItem<ProfileAction>(
-                  value: ProfileAction.appearance,
-                  child: ListTile(
-                    leading: Icon(Icons.palette_outlined),
-                    title: Text('Appearance'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                // Location Option
-                const PopupMenuItem<ProfileAction>(
-                  value: ProfileAction.location,
-                  child: ListTile(
-                    leading: Icon(Icons.location_on_outlined),
-                    title: Text('Location Settings'),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const PopupMenuDivider(), 
-                // Delete Account Option
-                PopupMenuItem<ProfileAction>(
-                  value: ProfileAction.deleteAccount,
-                  child: ListTile(
-                    leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), 
-                    title: Text(
-                      'Delete Account',
-                      style: TextStyle(color: Colors.red.shade700), 
-                    ),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(width: 8),
-        ],
-      body: _buildProfileBody(), 
-    );
+    // Return the body directly, without Scaffold or AppBar
+    return _buildProfileBody();
   }
 
   // --- Helper to Build Body Content ---
