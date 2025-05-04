@@ -182,7 +182,7 @@ class _ProfileState extends State<Profile> {
                 PopupMenuItem<ProfileAction>( value: ProfileAction.deleteAccount, child: ListTile( leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700), title: Text('Delete Account', style: TextStyle(color: Colors.red.shade700)), dense: true, contentPadding: EdgeInsets.zero ) ),
               ],
             ),
-          const SizedBox(width: 8), // Add padding like in Home.dart
+          const SizedBox(width: 8),
         ],
       ),
       body: _buildProfileBody(),
