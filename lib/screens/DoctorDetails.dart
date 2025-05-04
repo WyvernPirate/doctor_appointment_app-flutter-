@@ -517,7 +517,7 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
     }
 
     if (!mounted) return;
-    setState(() { _isBooking = true; }); // Set booking state
+    setState(() { _isBooking = true; });
 
     final appointmentData = {
       'doctorId': widget.doctor.id,
@@ -530,6 +530,28 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
       'createdAt': FieldValue.serverTimestamp(), // Record creation time
     };
 
+    // --- Pre-Transaction Check 1: Does user already have ANY appointment at this time? ---
+    try {
+      final existingAppointments = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('userId', isEqualTo: widget.userId)
+          .where('appointmentTime', isEqualTo: Timestamp.fromDate(bookingDateTime))
+          .limit(1) // We only need to know if at least one exists
+          .get();
+
+      if (existingAppointments.docs.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('You already have an appointment scheduled at this time.'), backgroundColor: Colors.orange),
+        );
+        setState(() { _isBooking = false; }); // Reset booking state
+        return; // Stop the booking process
+      }
+    } catch (e) {
+       print("Error checking existing user appointments: $e");
+       // Optionally handle this error, maybe allow proceeding with caution or show specific error
+    }
+
     // --- Use Firestore Transaction ---
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -539,17 +561,26 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
         // Get a reference for the new appointment document (Firestore generates ID)
         DocumentReference newAppointmentRef = FirebaseFirestore.instance.collection('appointments').doc();
 
-        // 1. Create the new appointment document within the transaction
+        // --- Transaction Check 2: Read doctor's current data to ensure slot is still available ---
+        DocumentSnapshot doctorSnapshot = await transaction.get(doctorRef);
+        if (!doctorSnapshot.exists) {
+          throw Exception("Doctor not found."); // Or handle differently
+        }
+        List<String> currentSlots = List<String>.from(doctorSnapshot.get('availableSlots') ?? []);
+
+        if (!currentSlots.contains(_selectedSlot)) {
+          // Slot is no longer available! Abort the transaction.
+          throw FirebaseException(
+              plugin: 'Firestore',
+              code: 'unavailable-slot',
+              message: 'Sorry, this time slot was just booked by someone else.');
+        }
+
+        // --- Slot is available, proceed with booking ---
+        // 1. Create the new appointment
         transaction.set(newAppointmentRef, appointmentData);
-
-        // 2. Update the doctor's document to remove the slot within the transaction
-        transaction.update(doctorRef, {
-          'availableSlots': FieldValue.arrayRemove([_selectedSlot])
-        });
-
-        // Note: You could optionally read the doctor's doc first within the transaction
-        // if you needed to perform checks before updating, but for just removing
-        // an item, it's usually not necessary.
+        // 2. Remove the slot from the doctor's availability
+        transaction.update(doctorRef, {'availableSlots': FieldValue.arrayRemove([_selectedSlot])});
       });
 
       // --- Transaction Successful ---
@@ -565,12 +596,19 @@ class _BookingBottomSheetContentState extends State<_BookingBottomSheetContent> 
         );
       }
     } catch (e) { // Catches errors from the transaction
-      // --- Transaction Failed ---
-      print("Error booking appointment: $e");
+      // --- Transaction Failed (or pre-check error) ---
+      print("Error during booking transaction: $e");
       if (mounted) {
+        String errorMessage = 'Failed to book appointment. Please try again.';
+        // Check if it was our specific "unavailable-slot" error
+        if (e is FirebaseException && e.code == 'unavailable-slot') {
+          errorMessage = e.message ?? 'Sorry, this time slot is no longer available.';
+        } else if (e.toString().contains("Doctor not found")) {
+           errorMessage = 'Could not find doctor details to confirm booking.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to book appointment: ${e.toString()}'),
+            content: Text(errorMessage),
             duration: const Duration(seconds: 4),
             backgroundColor: Colors.red,
           ),
