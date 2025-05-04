@@ -95,15 +95,8 @@ class _ProfileState extends State<Profile> {
             _isLoading = false; // Ensure loading stops after fetch
           });
           // Update local database in the background
-          // --- Convert Timestamps before saving locally ---
-          Map<String, dynamic> dataForLocalDb = Map.from(data); // Create a mutable copy
-          dataForLocalDb.updateAll((key, value) {
-            if (value is Timestamp) {
-              return value.toDate().toIso8601String(); // Convert Timestamp to ISO 8601 String
-            }
-            return value; // Keep other types as they are
-          });
-          await _dbHelper.insertUserProfile(dataForLocalDb); // Save the converted data
+          // --- Recursively convert Timestamps before saving locally ---
+          await _dbHelper.insertUserProfile(_convertTimestampsToStrings(data));
         } else if (mounted) {
           _showSnackBar('User data not found in database.');
           setState(() { _isLoading = false; });
@@ -121,6 +114,24 @@ class _ProfileState extends State<Profile> {
      }
   }
 
+  // --- Recursive function to convert Timestamps ---
+  dynamic _convertTimestampsToStrings(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate().toIso8601String();
+    } else if (value is Map<String, dynamic>) {
+      // Create a new map to avoid modifying the original during iteration
+      Map<String, dynamic> newMap = {};
+      value.forEach((key, val) {
+        newMap[key] = _convertTimestampsToStrings(val); // Recursively convert values
+      });
+      return newMap;
+    } else if (value is List) {
+      // Create a new list
+      return value.map((item) => _convertTimestampsToStrings(item)).toList(); // Recursively convert items
+    }
+    // Return the value unchanged if it's not a Timestamp, Map, or List
+    return value;
+  }
 
   void _showSnackBar(String message) {
      if (!mounted) return;
