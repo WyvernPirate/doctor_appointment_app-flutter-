@@ -312,10 +312,12 @@ class _HomeMapViewState extends State<HomeMapView> {
           style: initialStyleString, // Apply initial style directly
           mapType: MapType.normal,
           myLocationEnabled: true, // Show blue dot for user location
-          myLocationButtonEnabled: false, // Disable default button (using custom one below)
-          zoomControlsEnabled: true, // Keep zoom controls
-          mapToolbarEnabled: false, // Disable default map toolbar (optional)
-          compassEnabled: false, // Disable compass (optional)
+          myLocationButtonEnabled: false, 
+          zoomControlsEnabled: false, 
+          mapToolbarEnabled: false, 
+          zoomGesturesEnabled: true,
+          scrollGesturesEnabled: true,
+          compassEnabled: false, // Disable compass
           onMapCreated: (GoogleMapController controller) async {
             // Only assign controller once
             if (_mapController == null) {
