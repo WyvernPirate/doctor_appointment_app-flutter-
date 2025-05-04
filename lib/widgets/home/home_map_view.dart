@@ -313,7 +313,7 @@ class _HomeMapViewState extends State<HomeMapView> {
           mapType: MapType.normal,
           myLocationEnabled: true, // Show blue dot for user location
           myLocationButtonEnabled: false, 
-          zoomControlsEnabled: true, 
+          zoomControlsEnabled: false, 
           mapToolbarEnabled: false, 
           zoomGesturesEnabled: true,
           scrollGesturesEnabled: true,
