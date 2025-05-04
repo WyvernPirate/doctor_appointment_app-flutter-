@@ -97,14 +97,6 @@ flutter_native_splash:
   # Tell Android to fill the screen with the image
   android_gravity: fill
 
-  # Android specific options (optional)
-  android_12:
-    # Same options as above, but specific to Android 12+
-    color: "#FFFFFF"
-    image: assets/splash/splash_image.png # Corrected path from previous step
-    android_gravity: fill
-    # icon_background_color: "#FFFFFF" # Optional background for the icon itself
-
   # You can disable splash for specific platforms if needed:
   # android: false
   # ios: false
