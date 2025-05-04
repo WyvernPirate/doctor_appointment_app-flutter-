@@ -443,6 +443,9 @@ class _HomeState extends State<Home> {
 
   // --- Body Building Logic ---
   Widget _buildBody() {
+    // Determine if the map is currently supposed to be visible on the first page
+    bool isMapPotentiallyVisible = (_selectedIndex == 0 && _selectedPredefinedFilter == 'Map');
+
     // Use PageView for swipe navigation
     return PageView(
       controller: _pageController,
@@ -458,6 +461,10 @@ class _HomeState extends State<Home> {
           _selectedIndex = index; // Update BottomNavBar index when swiped
         });
       },
+      // Conditionally disable PageView scrolling if the map is visible
+      physics: isMapPotentiallyVisible
+          ? const NeverScrollableScrollPhysics() // Disable swiping
+          : const AlwaysScrollableScrollPhysics(), // Allow swiping
       children: <Widget>[
         _homeScreenBody(), // Page 0: Home
         _isGuest
