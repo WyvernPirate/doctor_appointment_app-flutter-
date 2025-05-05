@@ -47,3 +47,4 @@ firebase.json
 
 # Environmental variables
 .env
+config.dart

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:geocoding/geocoding.dart';
 
 // Models and Widgets
 import '/models/doctor.dart';
@@ -55,6 +56,8 @@ class _HomeState extends State<Home> {
   String? _locationError;
   String? _lightMapStyle;
   String? _darkMapStyle;
+  int _nearbyDoctorsCount = 0; // Count of nearby doctors
+  List<Doctor> _nearbyDoctorsList = []; // List of nearby doctors
  
   late PageController _pageController; // Controller for PageView
 
@@ -246,6 +249,49 @@ class _HomeState extends State<Home> {
     _filterDoctors();
   }
 
+  // --- Count Nearby Doctors using Lat/Lng ---
+  void _countNearbyDoctors() {
+    const double nearbyRadiusInKm = 45.0; // Define the radius (e.g., 45 kilometers)
+    const double metersInKm = 1000.0;
+
+    if (_currentUserPosition == null || _doctors.isEmpty || !mounted) {
+      setState(() {
+        _nearbyDoctorsList = []; // Clear the list too
+        _nearbyDoctorsCount = 0;
+      });
+      return;
+    }
+
+    int count = 0;
+    for (var doctor in _doctors) {
+      bool isNearby = false; // Flag to check if doctor is added
+      // Check if doctor has valid coordinates
+      if (doctor.latitude != null && doctor.longitude != null) {
+        double distanceInMeters = Geolocator.distanceBetween(
+          _currentUserPosition!.latitude,
+          _currentUserPosition!.longitude,
+          doctor.latitude!,
+          doctor.longitude!,
+        );
+        if (distanceInMeters <= (nearbyRadiusInKm * metersInKm)) {
+          count++;
+          isNearby = true; // Mark as nearby
+        }
+      }
+      // Add/remove from the list based on the check
+      if (isNearby && !_nearbyDoctorsList.any((d) => d.id == doctor.id)) {
+        _nearbyDoctorsList.add(doctor);
+      } else if (!isNearby && _nearbyDoctorsList.any((d) => d.id == doctor.id)) {
+        _nearbyDoctorsList.removeWhere((d) => d.id == doctor.id);
+      }
+    }
+    if (mounted) setState(() {
+       _nearbyDoctorsCount = count;
+       // The list (_nearbyDoctorsList) is updated directly above
+    });
+  }
+
+
   // --- List Filtering Logic (Remains the same) ---
   void _filterDoctors() {
     if (!mounted || _selectedPredefinedFilter == 'Map') {
@@ -253,6 +299,7 @@ class _HomeState extends State<Home> {
        if (_selectedPredefinedFilter == 'Map' && _filteredDoctors.isNotEmpty) {
            setState(() {
                _filteredDoctors = [];
+               _countNearbyDoctors();
            });
        }
        return;
@@ -537,6 +584,7 @@ class _HomeState extends State<Home> {
           predefinedFilters: _predefinedFilters,
           selectedPredefinedFilter: _selectedPredefinedFilter,
           onFilterSelected: _onPredefinedFilterSelected,
+          nearbyDoctorsCount: _nearbyDoctorsCount,
         ),
         Expanded(
           child: isMapSelected
@@ -549,6 +597,7 @@ class _HomeState extends State<Home> {
                   onRetryLocation: _getCurrentLocation, // Pass retry callback
                   lightMapStyle: _lightMapStyle,
                   darkMapStyle: _darkMapStyle,
+                  nearbyDoctors: _nearbyDoctorsList, // Corrected parameter name
                 )
               // Use the extracted List View Widget
               : HomeDoctorListView(
@@ -604,6 +653,7 @@ class _HomeState extends State<Home> {
         setState(() {
           _currentUserPosition = position;
           _isLoadingLocation = false;
+          _countNearbyDoctors();
         });
       }
     } catch (e) {
