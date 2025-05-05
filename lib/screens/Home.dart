@@ -57,6 +57,7 @@ class _HomeState extends State<Home> {
   String? _lightMapStyle;
   String? _darkMapStyle;
   int _nearbyDoctorsCount = 0; // Count of nearby doctors
+  List<Doctor> _nearbyDoctorsList = []; // List of nearby doctors
  
   late PageController _pageController; // Controller for PageView
 
@@ -255,6 +256,7 @@ class _HomeState extends State<Home> {
 
     if (_currentUserPosition == null || _doctors.isEmpty || !mounted) {
       setState(() {
+        _nearbyDoctorsList = []; // Clear the list too
         _nearbyDoctorsCount = 0;
       });
       return;
@@ -262,6 +264,7 @@ class _HomeState extends State<Home> {
 
     int count = 0;
     for (var doctor in _doctors) {
+      bool isNearby = false; // Flag to check if doctor is added
       // Check if doctor has valid coordinates
       if (doctor.latitude != null && doctor.longitude != null) {
         double distanceInMeters = Geolocator.distanceBetween(
@@ -272,10 +275,20 @@ class _HomeState extends State<Home> {
         );
         if (distanceInMeters <= (nearbyRadiusInKm * metersInKm)) {
           count++;
+          isNearby = true; // Mark as nearby
         }
       }
+      // Add/remove from the list based on the check
+      if (isNearby && !_nearbyDoctorsList.any((d) => d.id == doctor.id)) {
+        _nearbyDoctorsList.add(doctor);
+      } else if (!isNearby && _nearbyDoctorsList.any((d) => d.id == doctor.id)) {
+        _nearbyDoctorsList.removeWhere((d) => d.id == doctor.id);
+      }
     }
-    if (mounted) setState(() => _nearbyDoctorsCount = count);
+    if (mounted) setState(() {
+       _nearbyDoctorsCount = count;
+       // The list (_nearbyDoctorsList) is updated directly above
+    });
   }
 
 
@@ -584,6 +597,7 @@ class _HomeState extends State<Home> {
                   onRetryLocation: _getCurrentLocation, // Pass retry callback
                   lightMapStyle: _lightMapStyle,
                   darkMapStyle: _darkMapStyle,
+                  nearbyDoctors: _nearbyDoctorsList, // Corrected parameter name
                 )
               // Use the extracted List View Widget
               : HomeDoctorListView(
