@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:geocoding/geocoding.dart';
 
 // Models and Widgets
 import '/models/doctor.dart';
