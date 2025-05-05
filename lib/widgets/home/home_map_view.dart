@@ -5,9 +5,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '/models/doctor.dart';
 import 'package:url_launcher/url_launcher.dart'; // For launching maps/navigation
 import '/screens/DoctorDetails.dart'; // Import necessary screen
+import 'package:intl/intl.dart'; // For number formatting
 
 class HomeMapView extends StatefulWidget {
   final List<Doctor> doctors;
+  final List<Doctor> nearbyDoctors; // List of nearby doctors
   final Position? currentUserPosition;
   final bool isLoadingLocation;
   final String? locationError;
@@ -18,6 +20,7 @@ class HomeMapView extends StatefulWidget {
   const HomeMapView({
     super.key,
     required this.doctors,
+    required this.nearbyDoctors, // Pass nearby doctors to the widget
     required this.currentUserPosition,
     required this.isLoadingLocation,
     required this.locationError,
@@ -152,6 +155,17 @@ class _HomeMapViewState extends State<HomeMapView> {
     }
   }
 
+
+  // --- Animate map to a doctor's location ---
+  void _goToDoctorLocation(Doctor doctor) {
+    if (_mapController != null && doctor.latitude != null && doctor.longitude != null) {
+      _mapController!.animateCamera(CameraUpdate.newLatLngZoom(
+        LatLng(doctor.latitude!, doctor.longitude!),
+        15.0, // Zoom level when focusing on a doctor
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -226,12 +240,6 @@ class _HomeMapViewState extends State<HomeMapView> {
       );
     }
 
-    // --- DEBUGGING: Log received doctors ---
-    // print("[HomeMapView] Received ${widget.doctors.length} doctors. Checking locations:");
-    // widget.doctors.forEach((doc) {
-    //   print("  - ID: ${doc.id}, Name: ${doc.name}, Lat: ${doc.latitude}, Lng: ${doc.longitude}");
-    // });
-    // print("--- End of received doctors list ---");
 
     // Filter doctors who have a valid location
     final doctorsWithLocation = widget.doctors.where((doc) {
@@ -312,9 +320,9 @@ class _HomeMapViewState extends State<HomeMapView> {
           style: initialStyleString, // Apply initial style directly
           mapType: MapType.normal,
           myLocationEnabled: true, // Show blue dot for user location
-          myLocationButtonEnabled: false, 
-          zoomControlsEnabled: false, 
-          mapToolbarEnabled: false, 
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
+          mapToolbarEnabled: false,
           zoomGesturesEnabled: true,
           scrollGesturesEnabled: true,
           compassEnabled: false, // Disable compass
@@ -348,6 +356,42 @@ class _HomeMapViewState extends State<HomeMapView> {
           },
         ),
 
+        // --- Nearby Doctors Horizontal List Overlay (Added Back) ---
+        if (widget.nearbyDoctors.isNotEmpty)
+          Positioned(
+            top: 10.0,
+            left: 0,
+            right: 0,
+            child: Column( // Wrap ListView in a Column for the title
+              crossAxisAlignment: CrossAxisAlignment.start, // Align title left
+              mainAxisSize: MainAxisSize.min, // Column takes minimum height
+              children: [
+                // Title for the nearby doctors list
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
+                  child: Text(
+                    'Nearby Doctors',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87, // Adjust color for visibility
+                      shadows: [Shadow(blurRadius: 1.0, color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white, offset: Offset(0.5, 0.5))], // Subtle shadow for contrast
+                    ),
+                  ),
+                ),
+                // The horizontal list container
+                Container(
+                  height: 125.0, // Reduced height for the list
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    itemCount: widget.nearbyDoctors.length,
+                    itemBuilder: (context, index) => _buildNearbyDoctorCard(widget.nearbyDoctors[index]),
+                  ),
+                ),
+              ],
+          ),
+        ),
         // --- Custom Doctor Info Card Overlay ---
         if (_selectedDoctor != null)
           _buildDoctorInfoCard(_selectedDoctor!),
@@ -374,6 +418,72 @@ class _HomeMapViewState extends State<HomeMapView> {
           ),
         ),
       ],
+    );
+  }
+
+  // --- Helper to build a small card for the horizontal list (Added Back) ---
+  Widget _buildNearbyDoctorCard(Doctor doctor) {
+    String distanceText = '';
+    if (widget.currentUserPosition != null && doctor.latitude != null && doctor.longitude != null) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        widget.currentUserPosition!.latitude,
+        widget.currentUserPosition!.longitude,
+        doctor.latitude!,
+        doctor.longitude!,
+      );
+      double distanceInKm = distanceInMeters / 1000;
+      // Format to one decimal place, or show '< 0.1 km' if very close
+      distanceText = distanceInKm < 0.1
+          ? '< 0.1 km away'
+          : '${distanceInKm.toStringAsFixed(1)} km away';
+    }
+    return GestureDetector(
+      onTap: () {
+         _goToDoctorLocation(doctor); // Animate map on tap
+         // Optionally select the doctor to show the bottom card too
+         setState(() {
+           _selectedDoctor = doctor;
+         });
+      },
+      child: Container(
+        width: 180, // Adjust width as needed
+        margin: const EdgeInsets.symmetric(horizontal: 6.0),
+        child: Card(
+          elevation: 3.0, // Slightly more elevation for the top cards
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  doctor.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  doctor.specialty,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Spacer(), // Pushes content below to the bottom
+                // Display Distance if available
+                if (distanceText.isNotEmpty)
+                  Text(
+                    distanceText,
+                    style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor.withOpacity(0.9)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                // Text( doctor.address, style: TextStyle(fontSize: 11, color: Colors.grey.shade500), maxLines: 1, overflow: TextOverflow.ellipsis, ), // Optionally keep address or replace with distance
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
