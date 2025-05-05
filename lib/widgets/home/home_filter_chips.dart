@@ -5,10 +5,12 @@ class HomeFilterChips extends StatelessWidget {
   final List<String> predefinedFilters;
   final String? selectedPredefinedFilter;
   final ValueChanged<String> onFilterSelected;
+  final int nearbyDoctorsCount;
 
   const HomeFilterChips({
     super.key,
     required this.predefinedFilters,
+    required this.nearbyDoctorsCount,
     required this.selectedPredefinedFilter,
     required this.onFilterSelected,
   });
@@ -38,7 +40,8 @@ class HomeFilterChips extends StatelessWidget {
             labelColor =
                 theme.disabledColor; // Dim if map active and not map chip
           } else {
-            labelColor = chipTheme.labelStyle?.color ??
+            labelColor =
+                chipTheme.labelStyle?.color ??
                 theme.textTheme.bodyLarge!.color!;
           }
 
@@ -48,7 +51,7 @@ class HomeFilterChips extends StatelessWidget {
             onSelected: (selected) {
               // Only trigger if selecting a new filter
               if (selected && filter != selectedPredefinedFilter) {
-                 onFilterSelected(filter);
+                onFilterSelected(filter);
               }
             },
             showCheckmark:
@@ -63,9 +66,10 @@ class HomeFilterChips extends StatelessWidget {
             backgroundColor: chipTheme.backgroundColor, // Use theme color
             shape: chipTheme.shape, // Use theme shape
             side: chipTheme.side, // Use theme border side
-            elevation: isSelected
-                ? (chipTheme.elevation ?? 2.0)
-                : (chipTheme.pressElevation ?? 0.0),
+            elevation:
+                isSelected
+                    ? (chipTheme.elevation ?? 2.0)
+                    : (chipTheme.pressElevation ?? 0.0),
             pressElevation: chipTheme.pressElevation,
           );
         },
