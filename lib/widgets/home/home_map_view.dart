@@ -6,6 +6,10 @@ import '/models/doctor.dart';
 import 'package:url_launcher/url_launcher.dart'; // For launching maps/navigation
 import '/screens/DoctorDetails.dart'; // Import necessary screen
 import 'package:intl/intl.dart'; // For number formatting
+import 'dart:ui' as ui; // Needed for image rendering
+import 'package:flutter_polyline_points/flutter_polyline_points.dart'; // Import for route drawing
+import 'package:doctor_appointment_app/config.dart'; // Import your config for API key
+
 
 class HomeMapView extends StatefulWidget {
   final List<Doctor> doctors;
@@ -37,6 +41,9 @@ class _HomeMapViewState extends State<HomeMapView> {
   GoogleMapController? _mapController;
   Brightness? _currentMapBrightness;
   Doctor? _selectedDoctor; // State to track the selected doctor for the custom info card
+  // State for polylines
+  final Set<Polyline> _polylines = {};
+
 
   @override
   void dispose() {
@@ -125,44 +132,68 @@ class _HomeMapViewState extends State<HomeMapView> {
     }
   }
 
-  // --- Function to launch navigation ---
-  Future<void> _launchNavigation(Doctor doctor) async {
-    if (widget.currentUserPosition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Current location not available to start navigation.")),
-      );
-      return;
-    }
-
-    // Construct the Google Maps directions URL
-    // More universal approach: Use query parameter which works on both platforms
-    final query = Uri.encodeComponent('${doctor.latitude},${doctor.longitude}');
-    final mapUrl = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
-
-    // Platform-specific URLs (optional, query usually works well)
-    // final String googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving';
-    // final String appleMapsUrl = 'https://maps.apple.com/?saddr=$originLat,$originLng&daddr=$destLat,$destLng&dirflg=d';
-
-    // Uri uriToLaunch = Uri.parse(Platform.isIOS ? appleMapsUrl : googleMapsUrl); // Requires Platform import
-    Uri uriToLaunch = mapUrl; // Use the query-based URL for broader compatibility
-
-    if (await canLaunchUrl(uriToLaunch)) {
-      await launchUrl(uriToLaunch, mode: LaunchMode.externalApplication);
-    } else {
-      print('Could not launch $uriToLaunch');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open maps application for directions.')));
-    }
-  }
-
 
   // --- Animate map to a doctor's location ---
   void _goToDoctorLocation(Doctor doctor) {
-    if (_mapController != null && doctor.latitude != null && doctor.longitude != null) {
+    if (_mapController != null) {
       _mapController!.animateCamera(CameraUpdate.newLatLngZoom(
-        LatLng(doctor.latitude!, doctor.longitude!),
+        LatLng(doctor.latitude, doctor.longitude),
         15.0, // Zoom level when focusing on a doctor
       ));
+    }
+  }
+
+  // --- Clear existing polylines ---
+  void _clearPolylines() {
+    if (_polylines.isNotEmpty && mounted) {
+      setState(() {
+        _polylines.clear();
+      });
+    }
+  }
+
+  // --- Get Polyline points and draw route ---
+  Future<void> _getAndDrawPolyline(Doctor destinationDoctor) async {
+    if (widget.currentUserPosition == null || destinationDoctor.latitude == 0.0 || destinationDoctor.longitude == 0.0) {
+      _showErrorSnackBar("Cannot draw route: Location missing.");
+      return;
+    }
+
+    _clearPolylines(); // Clear previous routes
+
+    PolylinePoints polylinePoints = PolylinePoints();
+    PointLatLng origin = PointLatLng(widget.currentUserPosition!.latitude, widget.currentUserPosition!.longitude);
+    PointLatLng destination = PointLatLng(destinationDoctor.latitude, destinationDoctor.longitude);
+
+    try {
+      PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+        googleApiKey: AppConfig.googleMapsApiKey, 
+        request: PolylineRequest(
+          origin: origin,
+          destination: destination,
+          mode: TravelMode.driving, // Specify travel mode
+        ), // Use API Key from config           
+      );
+
+      if (result.points.isNotEmpty && mounted) {
+        List<LatLng> polylineCoordinates = result.points
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+
+        Polyline routePolyline = Polyline(
+          polylineId: const PolylineId('route'),
+          color: Theme.of(context).primaryColor.withOpacity(0.8), // Use theme color
+          points: polylineCoordinates,
+          width: 5, // Adjust width as needed
+        );
+
+        setState(() { _polylines.add(routePolyline); });
+      } else {
+        _showErrorSnackBar("Could not get route directions. ${result.errorMessage ?? ''}");
+      }
+    } catch (e) {
+      print("Error getting polyline: $e");
+      _showErrorSnackBar("Error calculating route.");
     }
   }
 
@@ -243,36 +274,10 @@ class _HomeMapViewState extends State<HomeMapView> {
 
     // Filter doctors who have a valid location
     final doctorsWithLocation = widget.doctors.where((doc) {
-      // Check if latitude and longitude are valid numbers and not the default 0.0
-      return doc.latitude != 0.0 && doc.longitude != 0.0 &&
+      // Check if latitude and longitude are valid numbers
+      return doc.latitude != null && doc.longitude != null &&
              doc.latitude.isFinite && doc.longitude.isFinite;
     }).toList();
-    // print("[HomeMapView] Filtered down to ${doctorsWithLocation.length} doctors with valid locations."); // Log count after filtering
-
-    // Create map markers
-    final Set<Marker> markers = doctorsWithLocation.map((doctor) {
-      // Use the direct latitude and longitude fields
-      // DEBUG: Confirming marker creation
-      // print("  -> Creating marker for ${doctor.name} at ${doctor.latitude}, ${doctor.longitude}");
-      return Marker(
-        markerId: MarkerId(doctor.id),
-        position: LatLng(doctor.latitude, doctor.longitude),
-        // Remove the default infoWindow
-        // infoWindow: InfoWindow(...),
-        onTap: () {
-          // When marker is tapped, update the selected doctor state
-          // and potentially move the camera slightly to ensure the card is visible
-          setState(() {
-            _selectedDoctor = doctor;
-          });
-          _mapController?.animateCamera(CameraUpdate.newLatLng(
-              LatLng(doctor.latitude, doctor.longitude))); // Center on tapped marker
-        },
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueAzure,
-        ),
-      );
-    }).toSet();
 
     // --- Determine Initial Camera Position ---
     LatLng initialCameraTarget;
@@ -311,52 +316,81 @@ class _HomeMapViewState extends State<HomeMapView> {
     return Stack(
       children: [
         // --- Map Widget ---
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: initialCameraTarget,
-            zoom: initialZoom,
-          ),
-          markers: markers,
-          style: initialStyleString, // Apply initial style directly
-          mapType: MapType.normal,
-          myLocationEnabled: true, // Show blue dot for user location
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          zoomGesturesEnabled: true,
-          scrollGesturesEnabled: true,
-          compassEnabled: false, // Disable compass
-          onMapCreated: (GoogleMapController controller) async {
-            // Only assign controller once
-            if (_mapController == null) {
-                 _mapController = controller;
-                 print("Map created. Controller assigned.");
-                 // Apply initial style (or style based on theme change)
-                 await _applyMapStyleBasedOnTheme();
+        // Use FutureBuilder to handle asynchronous marker creation
+        // --- Map Widget (Reverted to direct marker creation) ---
+        Builder( // Use Builder to get context for default marker color if needed
+          builder: (context) {
+            final Set<Marker> markers = doctorsWithLocation.map((doctor) {
+            return Marker(
+              markerId: MarkerId(doctor.id),
+              position: LatLng(doctor.latitude, doctor.longitude),
+              // Use default marker icon, potentially colored
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure, // Or use Theme.of(context).primaryColor somehow if needed
+              ),
+              // *** MODIFIED onTap: Select doctor, clear route, show card ***
+              onTap: () {
+                setState(() {
+                  _selectedDoctor = doctor;
+                  _clearPolylines(); // Clear any existing route when a new marker is tapped
+                });
+                // Optionally animate camera
+                _mapController?.animateCamera(CameraUpdate.newLatLng(
+                    LatLng(doctor.latitude, doctor.longitude)));
+              },
+            );
+          }).toSet();// Use generated markers or empty set if still loading/error
 
-                 // If user location was already available when map created, move camera
-                 if (widget.currentUserPosition != null && mounted) {
-                     print("Animating camera to user location on map creation.");
-                     controller.animateCamera(
-                        CameraUpdate.newLatLngZoom(
-                        LatLng(widget.currentUserPosition!.latitude, widget.currentUserPosition!.longitude),
-                        14.0,
-                        ),
-                    );
-                 } else {
-                     print("User location not available on map creation, using default position.");
-                 }
-            }
-          },
-          onTap: (_) {
-            // When tapping anywhere else on the map, deselect the doctor
-            setState(() {
-              _selectedDoctor = null;
-            });
+            return GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: initialCameraTarget,
+                zoom: initialZoom,
+              ),
+              markers: markers, // Use the markers from the FutureBuilder
+              polylines: _polylines, // Add polylines set here
+              style: initialStyleString, // Apply initial style directly
+              mapType: MapType.normal,
+              myLocationEnabled: true, // Show blue dot for user location
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              zoomGesturesEnabled: true,
+              scrollGesturesEnabled: true,
+              compassEnabled: false, // Disable compass
+              onMapCreated: (GoogleMapController controller) async {
+                // Only assign controller once
+                if (_mapController == null) {
+                     _mapController = controller;
+                     print("Map created. Controller assigned.");
+                     // Apply initial style (or style based on theme change)
+                     await _applyMapStyleBasedOnTheme();
+
+                     // If user location was already available when map created, move camera
+                     if (widget.currentUserPosition != null && mounted) {
+                         print("Animating camera to user location on map creation.");
+                         controller.animateCamera(
+                            CameraUpdate.newLatLngZoom(
+                            LatLng(widget.currentUserPosition!.latitude, widget.currentUserPosition!.longitude),
+                            14.0,
+                            ),
+                        );
+                     } else {
+                         print("User location not available on map creation, using default position.");
+                     }
+                }
+              },
+              onTap: (_) {
+                // When tapping anywhere else on the map, deselect the doctor
+                setState(() {
+                  _selectedDoctor = null;
+                  _clearPolylines(); // Clear route when tapping map background
+                });
+              },
+            );
           },
         ),
 
-        // --- Nearby Doctors Horizontal List Overlay (Added Back) ---
+        // --- Nearby Doctors Horizontal List Overlay ---
         if (widget.nearbyDoctors.isNotEmpty)
           Positioned(
             top: 10.0,
@@ -421,15 +455,23 @@ class _HomeMapViewState extends State<HomeMapView> {
     );
   }
 
-  // --- Helper to build a small card for the horizontal list (Added Back) ---
+  // --- Helper to show error snackbar ---
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red.shade600,
+    ));
+  }
+  // --- Helper to build a small card for the horizontal list ---
   Widget _buildNearbyDoctorCard(Doctor doctor) {
     String distanceText = '';
-    if (widget.currentUserPosition != null && doctor.latitude != null && doctor.longitude != null) {
+    if (widget.currentUserPosition != null) {
       double distanceInMeters = Geolocator.distanceBetween(
         widget.currentUserPosition!.latitude,
         widget.currentUserPosition!.longitude,
-        doctor.latitude!,
-        doctor.longitude!,
+        doctor.latitude,
+        doctor.longitude,
       );
       double distanceInKm = distanceInMeters / 1000;
       // Format to one decimal place, or show '< 0.1 km' if very close
@@ -478,7 +520,6 @@ class _HomeMapViewState extends State<HomeMapView> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                // Text( doctor.address, style: TextStyle(fontSize: 11, color: Colors.grey.shade500), maxLines: 1, overflow: TextOverflow.ellipsis, ), // Optionally keep address or replace with distance
               ],
             ),
           ),
@@ -550,7 +591,10 @@ class _HomeMapViewState extends State<HomeMapView> {
                 IconButton(
                   icon: Icon(Icons.directions, color: theme.primaryColor, size: 30),
                   tooltip: 'Get Directions',
-                  onPressed: () => _launchNavigation(doctor),
+                  // *** MODIFIED onPressed: Draw route instead of launching external app ***
+                  onPressed: () {
+                    _getAndDrawPolyline(doctor);
+                  },
                 ),
               ],
             ),
