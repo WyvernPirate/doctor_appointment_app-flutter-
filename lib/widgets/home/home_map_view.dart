@@ -404,7 +404,7 @@ class _HomeMapViewState extends State<HomeMapView> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
                   child: Text(
-                    'Nearby Doctors',
+                    'Nearby Doctors (${widget.nearbyDoctors.length})', // Show count in title
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -414,8 +414,8 @@ class _HomeMapViewState extends State<HomeMapView> {
                   ),
                 ),
                 // The horizontal list container
-                Container(
-                  height: 125.0, // Reduced height for the list
+                SizedBox(
+                  height: 130.0, // Slightly increased height
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 10.0),
