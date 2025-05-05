@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '/models/doctor.dart';
-import 'package:url_launcher/url_launcher.dart'; // For launching maps/navigation
 import '/screens/DoctorDetails.dart'; // Import necessary screen
-import 'package:intl/intl.dart'; // For number formatting
-import 'dart:ui' as ui; // Needed for image rendering
 import 'package:flutter_polyline_points/flutter_polyline_points.dart'; // Import for route drawing
 import 'package:doctor_appointment_app/config.dart'; // Import your config for API key
 
@@ -275,8 +272,7 @@ class _HomeMapViewState extends State<HomeMapView> {
     // Filter doctors who have a valid location
     final doctorsWithLocation = widget.doctors.where((doc) {
       // Check if latitude and longitude are valid numbers
-      return doc.latitude != null && doc.longitude != null &&
-             doc.latitude.isFinite && doc.longitude.isFinite;
+      return doc.latitude.isFinite && doc.longitude.isFinite;
     }).toList();
 
     // --- Determine Initial Camera Position ---
