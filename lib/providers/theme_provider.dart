@@ -10,10 +10,8 @@ class ThemeProvider with ChangeNotifier {
   ThemeProvider() {
     loadThemeMode(); // Load saved theme on initialization
   }
-  // Load theme preference from SharedPreferences
   Future<void> loadThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    // Get saved index, default to system
     final int themeIndex = prefs.getInt(_themePrefKey) ?? ThemeMode.system.index;
     _themeMode = ThemeMode.values[themeIndex];
     notifyListeners();
@@ -24,7 +22,7 @@ class ThemeProvider with ChangeNotifier {
     if (_themeMode == mode) return;
 
     _themeMode = mode;
-    notifyListeners(); // Notify UI immediately
+    notifyListeners(); // Notify UI 
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_themePrefKey, mode.index); // Save the index
