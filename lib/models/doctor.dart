@@ -1,4 +1,3 @@
-// lib/models/doctor.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Doctor {
@@ -13,8 +12,8 @@ class Doctor {
   final double longitude;
   final String bio;
   final bool isFavorite;
-  final Map<String, String> workingHours; // e.g., {'Monday': '9 AM - 5 PM', ...}
-  final List<String> availableSlots; // e.g., ['09:00', '09:30', '10:00']
+  final Map<String, String> workingHours; 
+  final List<String> availableSlots;
 
   Doctor({
     required this.id,
@@ -45,7 +44,7 @@ class Doctor {
       imageUrl: data['imageUrl'] ?? '', 
       rating: (data['rating'] ?? 0.0).toDouble(),
       bio: data['bio'] ?? 'N/A',
-      // Read location: Prioritize GeoPoint, fallback to Map
+      // Read GeoPoint, fallback to Map
       latitude: (data['location'] is GeoPoint)
           ? () {
               final geoPoint = data['location'] as GeoPoint;
@@ -58,17 +57,16 @@ class Doctor {
                   print("  -> Reading location as Map: Lat=$lat");
                   return lat;
                 }()
-              : 0.0, // Default if missing or wrong type
+              : 0.0, // Default if missing
       longitude: (data['location'] is GeoPoint)
-          ? (data['location'] as GeoPoint).longitude // Already printed lat/lng above
+          ? (data['location'] as GeoPoint).longitude 
           : (data['location'] is Map && data['location']['longitude'] is num)
-              ? (data['location']['longitude'] as num).toDouble() // Already printed lat above, assume lng is ok
-              : 0.0, // Default if missing or wrong type
+              ? (data['location']['longitude'] as num).toDouble() 
+              : 0.0, // Default if missing
 
       isFavorite: data['isFavorite'] ?? false,
       // Handle potential type issues from Firestore
       workingHours: Map<String, String>.from(data['workingHours'] ?? {}),
-      // Handle potential type issues from Firestore
       availableSlots: List<String>.from(data['availableSlots'] ?? []),
     );
   }
@@ -82,8 +80,7 @@ class Doctor {
        'phone': phone,
        'imageUrl': imageUrl,
        'rating': rating,
-       'bio': bio, // Corrected key from 'reviews' to 'bio' if that was intended
-       // Store location as GeoPoint
+       'bio': bio, 
        'location': GeoPoint(latitude, longitude),
        'isFavorite': isFavorite,
        'workingHours': workingHours,
