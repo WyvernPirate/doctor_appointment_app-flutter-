@@ -1,4 +1,3 @@
-// lib/screens/Appointments.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,7 +13,8 @@ class Appointments extends StatefulWidget {
 
 class _AppointmentsState extends State<Appointments> {
   // State variables
-  List<Map<String, dynamic>> _appointments = []; // Holds ALL fetched/cached appointments
+  List<Map<String, dynamic>> _appointments = []; 
+
   // Lists for categorized display
   List<Map<String, dynamic>> _upcomingAppointments = [];
   List<Map<String, dynamic>> _pastAppointments = [];
@@ -23,7 +23,6 @@ class _AppointmentsState extends State<Appointments> {
   bool _isLoading = true;
   String? _error;
   String? _loggedInUserId;
-  // Set to keep track of which appointment is currently being cancelled
   final Set<String> _cancellingAppointmentIds = {};
 
   static const String _prefsKeyAppointments = 'user_appointments_cache';
@@ -70,7 +69,6 @@ class _AppointmentsState extends State<Appointments> {
         final List<Map<String, dynamic>> localAppointments = decodedList.map((item) {
           if (item is Map) {
              Map<String, dynamic> appointmentMap = Map<String, dynamic>.from(item);
-             // Convert stored milliseconds back to DateTime
              if (appointmentMap['appointmentTimeMillis'] is int) {
                 appointmentMap['appointmentTime'] = DateTime.fromMillisecondsSinceEpoch(appointmentMap['appointmentTimeMillis']);
              }
@@ -89,34 +87,30 @@ class _AppointmentsState extends State<Appointments> {
       }
     } catch (e) {
       print("Error loading local appointments: $e");
-      // Optionally clear cache if corrupted
-      // SharedPreferences prefs = await SharedPreferences.getInstance();
-      // await prefs.remove(_prefsKeyAppointments + _loggedInUserId!);
     }
   }
 
   // Fetches appointments from Firestore for the logged-in user
   Future<void> _loadAppointmentsFromFirestore() async {
     if (!mounted || _loggedInUserId == null) return;
-    // Ensure loading indicator is shown if not already loading
+    // Ensure loading indicator 
     if (!_isLoading) {
        setState(() { _isLoading = true; });
     }
-    setState(() { _error = null; }); // Clear previous errors
+    setState(() { _error = null; }); 
 
     try {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('appointments')
           .where('userId', isEqualTo: _loggedInUserId)
-          // Fetch ALL appointments (including cancelled)
+          // Fetch ALL appointments
           .orderBy('appointmentTime', descending: false) // Sort by time
           .get();
 
       if (mounted) {
         final List<Map<String, dynamic>> firestoreAppointments = querySnapshot.docs.map((doc) {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          data['id'] = doc.id; // Store the document ID
-          // Convert Firestore Timestamp to DateTime
+          data['id'] = doc.id; 
           if (data['appointmentTime'] is Timestamp) {
              data['appointmentTime'] = (data['appointmentTime'] as Timestamp).toDate();
           }
@@ -126,22 +120,22 @@ class _AppointmentsState extends State<Appointments> {
         setState(() {
           _appointments = firestoreAppointments; // Update main list with fresh data
           _isLoading = false; // Stop loading
-          _error = null; // Clear error on success
+          _error = null; 
         });
-        _categorizeAppointments(); // Categorize the newly fetched data
+        _categorizeAppointments(); 
         await _saveAppointmentsLocally(_appointments); // Save the full list locally
       }
     } catch (e) {
       print("Error fetching appointments from Firestore: $e");
       if (mounted) {
-        // Show error only if no data (neither local nor fetched) could be displayed
+        // Show error only if no data could be displayed
         if (_appointments.isEmpty) {
           setState(() {
             _error = "Failed to load appointments.";
-            _isLoading = false; // Stop loading on error
+            _isLoading = false; 
           });
         } else {
-          // If local data exists, just stop loading but show a less intrusive error
+          // If local data exists, just stop loading but show intrusive error
           setState(() { _isLoading = false; });
           ScaffoldMessenger.of(context).showSnackBar(
              const SnackBar(content: Text('Could not refresh appointments.'), duration: Duration(seconds: 2))
@@ -191,18 +185,16 @@ class _AppointmentsState extends State<Appointments> {
         cancelled.add(appointment);
       } else if (appointmentDateTime != null && appointmentDateTime.isBefore(now)) {
         past.add(appointment);
-      } else if (appointmentDateTime != null) { // Ensure it has a valid time to be upcoming
+      } else if (appointmentDateTime != null) {
         upcoming.add(appointment);
       }
-      // Appointments with invalid times might be ignored or put in a separate category if needed
     }
 
-    // Sort categories (Upcoming: Oldest first; Past/Cancelled: Newest first)
+    // Sort categories
     upcoming.sort((a, b) => (a['appointmentTime'] as DateTime).compareTo(b['appointmentTime'] as DateTime));
     past.sort((a, b) => (b['appointmentTime'] as DateTime).compareTo(a['appointmentTime'] as DateTime));
     cancelled.sort((a, b) => (b['appointmentTime'] as DateTime).compareTo(a['appointmentTime'] as DateTime));
 
-    // Update state to reflect categorization
     if (mounted) {
       setState(() {
         _upcomingAppointments = upcoming;
@@ -230,12 +222,12 @@ class _AppointmentsState extends State<Appointments> {
           actions: <Widget>[
             TextButton(
               child: const Text('No'),
-              onPressed: () => Navigator.of(context).pop(false), // Return false
+              onPressed: () => Navigator.of(context).pop(false), 
             ),
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Yes, Cancel'),
-              onPressed: () => Navigator.of(context).pop(true), // Return true
+              onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
         );
@@ -256,10 +248,9 @@ class _AppointmentsState extends State<Appointments> {
             .doc(appointmentId)
             .update({'status': 'Cancelled'});
 
-        // Update local state immediately for responsiveness
+        // Update local state
         if (mounted) {
           setState(() {
-            // Find the appointment in the main list and update its status
             int index = _appointments.indexWhere((appt) => appt['id'] == appointmentId);
             if (index != -1) {
                _appointments[index]['status'] = 'Cancelled';
@@ -267,14 +258,13 @@ class _AppointmentsState extends State<Appointments> {
                _categorizeAppointments();
             }
           });
-          // Update the local cache with the modified full list
           await _saveAppointmentsLocally(_appointments);
 
           // Show success feedback
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Appointment cancelled successfully.'),
-              backgroundColor: Colors.orange, // Use a distinct color for cancellation
+              backgroundColor: Colors.orange,
             ),
           );
         }
@@ -290,7 +280,6 @@ class _AppointmentsState extends State<Appointments> {
           );
         }
       } finally {
-        // Always remove from the cancelling set, regardless of outcome
         if (mounted) {
           setState(() {
             _cancellingAppointmentIds.remove(appointmentId);
@@ -300,21 +289,20 @@ class _AppointmentsState extends State<Appointments> {
     }
   }
 
-  // Builds the main UI for the screen
+  // Builds the main UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar removed - Title is now handled by Home.dart
       body: _buildAppointmentList(),
     );
   }
 
-  // Builds the list view containing sections or status messages
+  // Builds the list view containing sections
   Widget _buildAppointmentList() {
     if (_isLoading && _upcomingAppointments.isEmpty && _pastAppointments.isEmpty && _cancelledAppointments.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    // Show error ONLY if all lists are empty
+    // Show error if all lists are empty
     if (_error != null && _upcomingAppointments.isEmpty && _pastAppointments.isEmpty && _cancelledAppointments.isEmpty) {
       return Center(
         child: Padding(
@@ -337,46 +325,41 @@ class _AppointmentsState extends State<Appointments> {
     // Show empty message if not loading, no error, and all lists are empty
     if (!_isLoading && _error == null && _upcomingAppointments.isEmpty && _pastAppointments.isEmpty && _cancelledAppointments.isEmpty) {
       return RefreshIndicator(
-         onRefresh: _loadAppointmentsFromFirestore, // Allow refresh even when empty
-         child: LayoutBuilder( // Use LayoutBuilder to make message scrollable
+         onRefresh: _loadAppointmentsFromFirestore, 
+         child: LayoutBuilder( 
            builder: (context, constraints) => SingleChildScrollView(
-             physics: const AlwaysScrollableScrollPhysics(), // Ensure scrollability
+             physics: const AlwaysScrollableScrollPhysics(), 
              child: ConstrainedBox(
-               constraints: BoxConstraints(minHeight: constraints.maxHeight), // Take full height
-               child: const Center(child: Text('No appointments found.')), // General empty message
+               constraints: BoxConstraints(minHeight: constraints.maxHeight), 
+               child: const Center(child: Text('No appointments found.')),
              ),
            ),
          ),
        );
     }
 
-    // Build the list using sections if there's data
+    // Build the list using sections
     return RefreshIndicator(
       onRefresh: _loadAppointmentsFromFirestore, // Enable pull-to-refresh
-      child: ListView( // Use a simple ListView for sections
+      child: ListView( 
         children: [
           // --- Upcoming Section ---
           if (_upcomingAppointments.isNotEmpty) ...[
             _buildSectionHeader('Upcoming Appointments'),
-            // Map upcoming appointments to cards
             ..._upcomingAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: false)),
           ],
 
           // --- Past Section ---
           if (_pastAppointments.isNotEmpty) ...[
             _buildSectionHeader('Past Appointments'),
-            // Map past appointments to cards (styled differently)
             ..._pastAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: true)),
           ],
 
           // --- Cancelled Section ---
           if (_cancelledAppointments.isNotEmpty) ...[
             _buildSectionHeader('Cancelled Appointments'),
-            // Map cancelled appointments to cards (styled differently)
             ..._cancelledAppointments.map((appt) => _buildAppointmentCard(appt, isPastOrCancelled: true)),
           ],
-
-           // Add some padding at the bottom
            const SizedBox(height: 20),
         ],
       ),
@@ -396,7 +379,6 @@ class _AppointmentsState extends State<Appointments> {
 
   // Builds a card widget for a single appointment
   Widget _buildAppointmentCard(Map<String, dynamic> appointment, {required bool isPastOrCancelled}) {
-    // Extract data safely
     String doctorName = appointment['doctorName'] ?? 'N/A';
     String specialty = appointment['doctorSpecialty'] ?? 'N/A';
     String status = appointment['status'] ?? 'Unknown';
@@ -407,11 +389,11 @@ class _AppointmentsState extends State<Appointments> {
     // Format date and time
     String dateStr = 'N/A';
     String timeStr = 'N/A';
-    DateTime? appointmentDateTime = appointment['appointmentTime'] as DateTime?; // Should be DateTime now
+    DateTime? appointmentDateTime = appointment['appointmentTime'] as DateTime?; 
 
     if (appointmentDateTime != null) {
-      dateStr = DateFormat.yMMMd().format(appointmentDateTime); // e.g., Apr 23, 2025
-      timeStr = DateFormat.jm().format(appointmentDateTime); // e.g., 10:30 AM
+      dateStr = DateFormat.yMMMd().format(appointmentDateTime);
+      timeStr = DateFormat.jm().format(appointmentDateTime);
     }
 
     // Determine if cancellation is allowed
@@ -429,7 +411,7 @@ class _AppointmentsState extends State<Appointments> {
       opacity: cardOpacity,
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        elevation: isPastOrCancelled ? 1 : 2, // Slightly less elevation
+        elevation: isPastOrCancelled ? 1 : 2, 
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -474,7 +456,7 @@ class _AppointmentsState extends State<Appointments> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildStatusBadge(status), // Status badge
+                        _buildStatusBadge(status),
                         // Show Cancel Button or Loading Indicator conditionally
                         if (canCancel)
                           isCurrentlyCancelling
@@ -488,9 +470,8 @@ class _AppointmentsState extends State<Appointments> {
                                 onPressed: () => _handleCancelAppointment(appointment),
                                 child: const Text('Cancel'),
                               )
-                        // Add a placeholder if not cancellable but need to maintain spacing, unless cancelled
                         else if (status.toLowerCase() != 'cancelled')
-                           const SizedBox(height: 24), // Placeholder with height
+                           const SizedBox(height: 24), 
                       ],
                     ),
                   ],
@@ -506,7 +487,7 @@ class _AppointmentsState extends State<Appointments> {
   // Helper function to build a status badge
   Widget _buildStatusBadge(String status) {
      Color badgeColor;
-     String displayStatus = status; // Use original case for display
+     String displayStatus = status; 
 
     switch (status.toLowerCase()) {
       case 'scheduled': badgeColor = Colors.blue; break;
@@ -523,7 +504,7 @@ class _AppointmentsState extends State<Appointments> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        displayStatus, // Display original status text
+        displayStatus, 
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -533,4 +514,4 @@ class _AppointmentsState extends State<Appointments> {
     );
   }
 
-} // End of _AppointmentsState
+} 
