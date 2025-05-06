@@ -60,5 +60,8 @@ This project is a Flutter-based mobile application that allows patients to searc
 ## Project Structure
 
 ## TODO
-- add lat and long to the doctor database so to be able to pick
-- allow map integration on tapping
+- implement the forgot password feature
+- implement logging from other platforms(eg Google, Facebook)
+- implement a splash screen
+- improve the look and feel of the Profile Page and Appointment Page
+- implement doctor side of the app to be able to view their own appointments and communicate woth patients
