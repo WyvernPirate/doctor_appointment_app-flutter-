@@ -30,7 +30,7 @@ class _HomeState extends State<Home> {
   int _selectedIndex = 0;
   String? _loggedInUserId;
   String? _userName;
-  static const String _prefsKeyAppointments = 'user_appointments_cache';
+  //static const String _prefsKeyAppointments = 'user_appointments_cache';
 
   // --- Search & Filtering State ---
   final TextEditingController _searchController = TextEditingController();
@@ -265,12 +265,13 @@ class _HomeState extends State<Home> {
     for (var doctor in _doctors) {
       bool isNearby = false; // Flag to check if doctor is added
       // Check if doctor has valid coordinates
+      // ignore: unnecessary_null_comparison
       if (doctor.latitude != null && doctor.longitude != null) {
         double distanceInMeters = Geolocator.distanceBetween(
           _currentUserPosition!.latitude,
           _currentUserPosition!.longitude,
-          doctor.latitude!,
-          doctor.longitude!,
+          doctor.latitude,
+          doctor.longitude,
         );
         if (distanceInMeters <= (nearbyRadiusInKm * metersInKm)) {
           count++;
