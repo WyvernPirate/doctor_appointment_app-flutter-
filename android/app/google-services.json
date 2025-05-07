@@ -1,13 +1,15 @@
 {
   "project_info": {
-    "project_number": "4258195571",
-    "project_id": "doctorappointmentapp-9f11a",
-    "storage_bucket": "doctorappointmentapp-9f11a.firebasestorage.app"
+    "project_number": "@FIREBASE_MESSAGING_SENDER_ID@",
+    "firebase_url": "https://@FIREBASE_PROJECT_ID@-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "@FIREBASE_PROJECT_ID@",
+    "storage_bucket": "@FIREBASE_STORAGE_BUCKET@"
+  
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:4258195571:android:53216a74a62412c4ece206",
+        "mobilesdk_app_id": "@FIREBASE_ANDROID_APP_ID@",
         "android_client_info": {
           "package_name": "com.example.doctor_appointment_app"
         }
@@ -20,7 +22,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyB_BUlJIrAQ4KO2ANO2-X9qFmu0XcNoNp8"
+          "current_key": "@FIREBASE_ANDROID_API_KEY@"
         }
       ],
       "services": {
