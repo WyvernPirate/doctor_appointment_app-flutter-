@@ -6,14 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path/path.dart' as path;
-import 'package:shared_preferences/shared_preferences.dart'; 
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase User
 import 'Home.dart';
 
 class ProfileCreation extends StatefulWidget {
-
-  final String email;
-  final String hashedPassword;
-  const ProfileCreation({super.key, required this.email, required this.hashedPassword});
+  final User firebaseUser; // Accept Firebase User object
+  const ProfileCreation({super.key, required this.firebaseUser});
 
   @override
   _ProfileCreationState createState() => _ProfileCreationState();
@@ -21,7 +20,7 @@ class ProfileCreation extends StatefulWidget {
 
 class _ProfileCreationState extends State<ProfileCreation> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _nameController = TextEditingController(); // Keep this
   final _emailController = TextEditingController(); 
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
@@ -37,8 +36,8 @@ class _ProfileCreationState extends State<ProfileCreation> {
   @override
   void initState() {
     super.initState();
-    // Initialize the email field using the passed email
-    _emailController.text = widget.email;
+    // Initialize the email field using the Firebase user's email
+    _emailController.text = widget.firebaseUser.email ?? '';
   }
 
   @override
@@ -108,16 +107,16 @@ class _ProfileCreationState extends State<ProfileCreation> {
 
       try {
         String? imageUrl;
-        // Firestore document reference 
-        DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc();
-        String generatedUserId = userDocRef.id; // Get the generated ID
+        // Use Firebase UID as the document ID
+        String userId = widget.firebaseUser.uid;
+        DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
 
         if (_profileImage != null) {
           String fileName = path.basename(_profileImage!.path);
           // *** UPDATED Storage Path ***
           Reference storageReference = FirebaseStorage.instance
               .ref()
-              .child('userImage/$generatedUserId/$fileName'); // Changed folder name
+              .child('userImage/$userId/$fileName'); // Use Firebase UID in path
           UploadTask uploadTask = storageReference.putFile(_profileImage!);
           await uploadTask.whenComplete(() async {
             imageUrl = await storageReference.getDownloadURL();
@@ -126,36 +125,34 @@ class _ProfileCreationState extends State<ProfileCreation> {
 
         // Store user data in Firestore using the generated ID
         await userDocRef.set({
-          'userId': generatedUserId, // Store the generated ID itself
+          'userId': userId, // Store the Firebase UID
           'name': _nameController.text,
-          'email': widget.email, // Use the original email passed
+          'email': widget.firebaseUser.email, // Use email from Firebase User
           'phone': _phoneController.text,
           'address': _addressController.text,
           'dob': _dobController.text,
           'gender': _gender,
           'profileImageUrl': imageUrl,
-          // *** STORE THE HASHED PASSWORD ***
-          'hashedPassword': widget.hashedPassword,
+          // DO NOT store password or hashed password here
           // Add creation timestamp, etc. if needed
           'createdAt': FieldValue.serverTimestamp(),
         });
 
         // Save profile data to local database (optional)
         await dbHelper.insertUserProfile({
-          'userId': generatedUserId, // Use generated ID
+          'userId': userId, // Use Firebase UID
           'name': _nameController.text,
-          'email': widget.email,
+          'email': widget.firebaseUser.email ?? '',
           'phone': _phoneController.text,
-        'address': _addressController.text,
-        'dob': _dobController.text,
-        'gender': _gender,
-        
+          'address': _addressController.text,
+          'dob': _dobController.text,
+          'gender': _gender,
           'profileImageUrl': imageUrl,
         });
 
         // *** Store generatedUserId locally to signify login ***
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('loggedInUserId', generatedUserId);
+        await prefs.setString('loggedInUserId', userId); // Store Firebase UID
         await prefs.setBool('isGuest', false); // Explicitly set not guest
 
         // Navigate to Home screen
