@@ -1,13 +1,13 @@
 // InitLogin.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // For FirebaseAuthException
 
+import '/services/auth_service.dart';
 import 'Home.dart';
 import 'PasswordReset.dart'; // TODO: implementation
 import 'SignUp.dart';
-import '../utils/hash_helper.dart'; 
 
 class InitLogin extends StatefulWidget {
   const InitLogin({super.key});
@@ -17,6 +17,7 @@ class InitLogin extends StatefulWidget {
 }
 
 class _InitLoginState extends State<InitLogin> {
+  final AuthService _authService = AuthService();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -36,45 +37,28 @@ class _InitLoginState extends State<InitLogin> {
       });
       try {
         final String email = _emailController.text.trim();
-        final String password = _passwordController.text.trim(); // Plain text password
+        final String password = _passwordController.text.trim();
 
-        // Query Firestore for the user by email
-        QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('email', isEqualTo: email)
-            .limit(1) // Expect only one user per email
-            .get();
+        await _authService.signInWithEmailAndPassword(email, password);
+        // If login is successful, AuthGate will handle navigation to Home.
+        // No need to manually navigate or set SharedPreferences for session here.
 
-        if (querySnapshot.docs.isNotEmpty) {
-          // User found
-          var userData = querySnapshot.docs.first.data() as Map<String, dynamic>;
-          String storedHash = userData['hashedPassword'] ?? '';
-          String userId = querySnapshot.docs.first.id; // Get the document ID
-
-          // Verify the entered password against the stored hash
-          if (HashHelper.verifyPassword(password, storedHash)) {
-            // Password matches!
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            await prefs.setString('loggedInUserId', userId); // Store Firestore doc ID
-            await prefs.setBool('isGuest', false);
-
-            // Navigate to the Home screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const Home()),
-            );
-          } else {
-            // Password does not match
-            _showError('Incorrect password.');
-          }
+      } on FirebaseAuthException catch (e) {
+        String errorMessage = 'Login failed. Please try again.';
+        if (e.code == 'user-not-found' || e.code == 'invalid-credential') { // invalid-credential can mean user not found or wrong password
+          errorMessage = 'Incorrect email or password.';
+        } else if (e.code == 'wrong-password') { // This might be covered by invalid-credential in newer SDKs
+          errorMessage = 'Incorrect password.';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'The email address is not valid.';
         } else {
-          // User not found
-          _showError('No user found for that email.');
+          errorMessage = e.message ?? errorMessage;
         }
+        _showError(errorMessage);
       } catch (e, stackTrace) {
         print("Error during login: $e");
         print(stackTrace);
-        _showError('An unexpected error occurred during login.');
+        _showError('An unexpected error occurred. Please try again.');
       } finally {
         // Ensure loading indicator stops regardless of outcome
         if (mounted) { 
@@ -95,7 +79,7 @@ class _InitLoginState extends State<InitLogin> {
   }
 
 
-  Future<void> _handleSkipLogin() async {
+  Future<void> _handleSkipLogin() async { // This can remain if you want a guest mode
     SharedPreferences prefs = await SharedPreferences.getInstance();
     // Clear any potential loggedInUserId if skipping
     await prefs.remove('loggedInUserId');
