@@ -1,8 +1,9 @@
 // SignUp.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // For UserCredential and FirebaseAuthException
+import 'package:doctor_appointment_app/services/auth_service.dart';
 import 'ProfileCreation.dart';
-import '../utils/hash_helper.dart'; // Import the hashing utility
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -12,6 +13,7 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
+  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -34,31 +36,45 @@ class _SignUpState extends State<SignUp> {
       try {
         final String email = _emailController.text.trim();
         final String password = _passwordController.text.trim();
-      
-        // *** HASH THE PASSWORD *
-        final String hashedPassword = HashHelper.hashPassword(password);
 
-      
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ProfileCreation(
-                    email: email,
-                    hashedPassword: hashedPassword,
-                    // No userId needed here yet, will be generated in ProfileCreation
-                  )),
-        );
-        
-      } catch (e, stackTrace) { // Catch potential errors during hashing or navigation
-        print("Error during sign up navigation: $e");
+        UserCredential? userCredential = await _authService.signUpWithEmailAndPassword(email, password);
+
+        if (userCredential?.user != null && mounted) {
+          // User created successfully in Firebase Auth.
+          // Now navigate to ProfileCreation, passing Firebase user's info.
+          // ProfileCreation will be responsible for creating the Firestore document.
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ProfileCreation(
+                      firebaseUser: userCredential!.user!, // Pass the Firebase User object
+                      // Or pass specific details:
+                      // email: userCredential.user!.email!,
+                      // uid: userCredential.user!.uid,
+                    )),
+          );
+        } else if (mounted) {
+           _showError('Could not complete sign up. Please try again.');
+        }
+      } on FirebaseAuthException catch (e) {
+        _showError(e.message ?? 'Sign up failed. Please try again.');
+      } catch (e, stackTrace) {
+        print("Error during sign up: $e");
         print(stackTrace);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An error occurred preparing profile creation.')),
-        );
+        _showError('An unexpected error occurred during sign up.');
+      } finally {
          setState(() { // Ensure loading stops on error
            _isLoading = false;
          });
       }
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
@@ -84,11 +100,11 @@ class _SignUpState extends State<SignUp> {
   Column _signUpSection() {
     
      // Make sure the password confirmation validator works:
-     // validator: (value) {
-     //   if (value == null || value.isEmpty) { return 'Please confirm password'; }
-     //   if (value != _passwordController.text) { return 'Passwords do not match'; }
-     //   return null;
-     // },
+     validator: (value) {
+        if (value == null || value.isEmpty) { return 'Please confirm password'; }
+        if (value != _passwordController.text) { return 'Passwords do not match'; }
+        return null;
+      };
     return Column(
        crossAxisAlignment: CrossAxisAlignment.start,
        children: [
