@@ -1,26 +1,18 @@
 // lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'providers/theme_provider.dart';
-import 'screens/Home.dart';
-import 'screens/InitLogin.dart';
+import 'package:doctor_appointment_app/screens/auth_gate.dart'; // Import AuthGate
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     await dotenv.load(fileName: ".env");
-    // Load the .env file content from assets
-    final envString = await rootBundle.loadString('.env');
-    // Parse the string
-    dotenv.testLoad(fileInput: envString);
     print(".env file loaded successfully.");
   } catch (e) {
     print("CRITICAL ERROR: Failed to load .env file: $e");
@@ -51,12 +43,7 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  // Function to check if user session exists
-  Future<bool> _checkUserSession() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('loggedInUserId') != null;
-  }
-
+  
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -169,20 +156,7 @@ class MyApp extends StatelessWidget {
       ),
 
       themeMode: themeProvider.themeMode,
-      home: FutureBuilder<bool>(
-        future: _checkUserSession(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          } else if (snapshot.hasData && snapshot.data == true) {
-            return const Home();
-          } else {
-            return const InitLogin();
-          }
-        },
-      ),
+      home: const AuthGate(), // Use AuthGate to handle auth state and initial routing
     );
   }
 }
