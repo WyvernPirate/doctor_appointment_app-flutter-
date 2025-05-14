@@ -79,7 +79,7 @@ class DefaultFirebaseOptions {
         projectId: _getEnv('FIREBASE_PROJECT_ID'),
         storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
         iosBundleId: _getEnv('FIREBASE_MACOS_BUNDLE_ID'),
-      );
+      ); 
 
   static FirebaseOptions get windows => FirebaseOptions(
         apiKey: _getEnv('FIREBASE_WINDOWS_API_KEY'),
